@@ -20,11 +20,11 @@ export class TrestleView {
         this.dragTarget = null
 
         // Register event handlers
-        this.eventBus.subscribe('model:loaded', this.renderTree.bind(this))
-        this.eventBus.subscribe('model:created', this.renderTree.bind(this))
-        this.eventBus.subscribe('node:added', this.handleNodeAdded.bind(this))
-        this.eventBus.subscribe('node:updated', this.handleNodeUpdated.bind(this))
-        this.eventBus.subscribe('node:deleted', this.handleNodeDeleted.bind(this))
+        this.eventBus.on('model:loaded', this.renderTree.bind(this))
+        this.eventBus.on('model:created', this.renderTree.bind(this))
+        this.eventBus.on('node:added', this.handleNodeAdded.bind(this))
+        this.eventBus.on('node:updated', this.handleNodeUpdated.bind(this))
+        this.eventBus.on('node:deleted', this.handleNodeDeleted.bind(this))
     }
 
     /**
@@ -189,7 +189,7 @@ export class TrestleView {
 
         if (target.classList.contains('ts-addChild')) {
             const entryId = target.closest('.ts-entry').id
-            this.eventBus.publish('view:addChild', { parentId: entryId })
+            this.eventBus.emit('view:addChild', { parentId: entryId })
             event.stopPropagation()
             return
         }
@@ -197,7 +197,7 @@ export class TrestleView {
         if (target.classList.contains('ts-delete')) {
             const entryId = target.closest('.ts-entry').id
             if (confirm('Are you sure you want to delete this item and all its children?')) {
-                this.eventBus.publish('view:deleteNode', { nodeId: entryId })
+                this.eventBus.emit('view:deleteNode', { nodeId: entryId })
             }
             event.stopPropagation()
             return
@@ -258,10 +258,10 @@ export class TrestleView {
                     // Save the changes
                     const nodeId = entry.id
                     const newTitle = event.target.textContent.trim()
-                    this.eventBus.publish('view:updateNode', { nodeId, properties: { title: newTitle } })
+                    this.eventBus.emit('view:updateNode', { nodeId, properties: { title: newTitle } })
 
                     // Insert new node after current
-                    this.eventBus.publish('view:addSibling', { nodeId })
+                    this.eventBus.emit('view:addSibling', { nodeId })
                 }
                 break
 
@@ -269,10 +269,10 @@ export class TrestleView {
                 event.preventDefault()
                 if (event.shiftKey) {
                     // Outdent
-                    this.eventBus.publish('view:outdentNode', { nodeId: entry.id })
+                    this.eventBus.emit('view:outdentNode', { nodeId: entry.id })
                 } else {
                     // Indent
-                    this.eventBus.publish('view:indentNode', { nodeId: entry.id })
+                    this.eventBus.emit('view:indentNode', { nodeId: entry.id })
                 }
                 break
 
@@ -324,7 +324,7 @@ export class TrestleView {
             const nodeId = entry.id
             const newTitle = event.target.textContent.trim()
 
-            this.eventBus.publish('view:updateNode', { nodeId, properties: { title: newTitle } })
+            this.eventBus.emit('view:updateNode', { nodeId, properties: { title: newTitle } })
         }
     }
 
@@ -506,7 +506,7 @@ export class TrestleView {
         }
 
         // Publish move event
-        this.eventBus.publish('view:moveNode', {
+        this.eventBus.emit('view:moveNode', {
             nodeId: this.draggedNodeId,
             newParentId: newParentId,
             newIndex: newIndex
@@ -632,7 +632,7 @@ export class TrestleView {
         const date = entry.querySelector('.date').textContent
 
         // Get description from model via event
-        this.eventBus.publish('view:getNodeData', {
+        this.eventBus.emit('view:getNodeData', {
             nodeId,
             callback: (node) => {
                 const card = document.getElementById('card')

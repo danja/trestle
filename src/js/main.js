@@ -3,7 +3,7 @@ import TrestleRDFModel from './model/TrestleRDFModel.js'
 import { TrestleView } from './view/TrestleView.js'
 import { TrestleController } from './controller/TrestleController.js'
 import { Config } from './config.js'
-import { EventBus } from './utils/EventBus.js'
+import { EventBus } from 'evb'
 
 document.addEventListener('DOMContentLoaded', () => {
     // Create an event bus instance for communication

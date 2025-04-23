@@ -18,9 +18,9 @@ export class TrestleModel {
         this.nodes = new Map()
 
         // Register event handlers
-        this.eventBus.subscribe('node:updated', this.handleNodeUpdate.bind(this))
-        this.eventBus.subscribe('node:moved', this.handleNodeMove.bind(this))
-        this.eventBus.subscribe('node:deleted', this.handleNodeDelete.bind(this))
+        this.eventBus.on('node:updated', this.handleNodeUpdate.bind(this))
+        this.eventBus.on('node:moved', this.handleNodeMove.bind(this))
+        this.eventBus.on('node:deleted', this.handleNodeDelete.bind(this))
     }
 
     /**
@@ -29,7 +29,7 @@ export class TrestleModel {
     async initialize() {
         try {
             await this.loadData()
-            this.eventBus.publish('model:loaded', { nodes: Array.from(this.nodes.values()) })
+            this.eventBus.emit('model:loaded', { nodes: Array.from(this.nodes.values()) })
         } catch (error) {
             console.error('Failed to initialize model:', error)
             // Create a new empty model if none exists
@@ -51,7 +51,7 @@ export class TrestleModel {
             children: []
         })
 
-        this.eventBus.publish('model:created', {
+        this.eventBus.emit('model:created', {
             rootId: this.rootId,
             nodes: Array.from(this.nodes.values())
         })
@@ -490,7 +490,7 @@ export class TrestleModel {
             return true
         } catch (error) {
             console.error('Error saving data:', error)
-            this.eventBus.publish('model:error', { message: 'Failed to save data', error })
+            this.eventBus.emit('model:error', { message: 'Failed to save data', error })
             return false
         }
     }

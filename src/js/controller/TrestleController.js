@@ -28,14 +28,14 @@ export class TrestleController {
      */
     setupEventHandlers() {
         // View events
-        this.eventBus.subscribe('view:addChild', this.handleAddChild.bind(this))
-        this.eventBus.subscribe('view:addSibling', this.handleAddSibling.bind(this))
-        this.eventBus.subscribe('view:updateNode', this.handleUpdateNode.bind(this))
-        this.eventBus.subscribe('view:deleteNode', this.handleDeleteNode.bind(this))
-        this.eventBus.subscribe('view:moveNode', this.handleMoveNode.bind(this))
-        this.eventBus.subscribe('view:indentNode', this.handleIndentNode.bind(this))
-        this.eventBus.subscribe('view:outdentNode', this.handleOutdentNode.bind(this))
-        this.eventBus.subscribe('view:getNodeData', this.handleGetNodeData.bind(this))
+        this.eventBus.on('view:addChild', this.handleAddChild.bind(this))
+        this.eventBus.on('view:addSibling', this.handleAddSibling.bind(this))
+        this.eventBus.on('view:updateNode', this.handleUpdateNode.bind(this))
+        this.eventBus.on('view:deleteNode', this.handleDeleteNode.bind(this))
+        this.eventBus.on('view:moveNode', this.handleMoveNode.bind(this))
+        this.eventBus.on('view:indentNode', this.handleIndentNode.bind(this))
+        this.eventBus.on('view:outdentNode', this.handleOutdentNode.bind(this))
+        this.eventBus.on('view:getNodeData', this.handleGetNodeData.bind(this))
     }
 
     /**
@@ -59,7 +59,7 @@ export class TrestleController {
 
         // danny   const node = this.model.addNode(rootNode.id, 'New Item', rootNode.children.length);
         const node = this.model.addNode(rootNode.id, '', rootNode.children.length)
-        this.eventBus.publish('node:added', {
+        this.eventBus.emit('node:added', {
             node,
             parentId: 'trestle-root'
         })
@@ -88,7 +88,7 @@ export class TrestleController {
         const childIndex = parent.children ? parent.children.length : 0
         const node = this.model.addNode(parentId, '', childIndex)
 
-        this.eventBus.publish('node:added', {
+        this.eventBus.emit('node:added', {
             node,
             parentId
         })
@@ -116,7 +116,7 @@ export class TrestleController {
         // danny   const newNode = this.model.addNode(parentId, 'New Item', siblingIndex + 1)
         const newNode = this.model.addNode(parentId, '', siblingIndex + 1)
         //    const newNode = this.model.addNode(parentId, 'New Item', siblingIndex + 1)
-        this.eventBus.publish('node:added', {
+        this.eventBus.emit('node:added', {
             node: newNode,
             parentId
         })
@@ -131,7 +131,7 @@ export class TrestleController {
 
         this.model.updateNode(nodeId, properties)
 
-        this.eventBus.publish('node:updated', {
+        this.eventBus.emit('node:updated', {
             nodeId,
             properties
         })
@@ -146,7 +146,7 @@ export class TrestleController {
 
         this.model.deleteNode(nodeId)
 
-        this.eventBus.publish('node:deleted', {
+        this.eventBus.emit('node:deleted', {
             nodeId
         })
     }
@@ -188,7 +188,7 @@ export class TrestleController {
         this.model.moveNode(nodeId, newParentId, newParent.children ? newParent.children.length : 0)
 
         // Notify view to update
-        this.eventBus.publish('view:nodeIndented', {
+        this.eventBus.emit('view:nodeIndented', {
             nodeId,
             newParentId
         })
@@ -218,7 +218,7 @@ export class TrestleController {
         this.model.moveNode(nodeId, grandparentId, parentIndex + 1)
 
         // Notify view to update
-        this.eventBus.publish('view:nodeOutdented', {
+        this.eventBus.emit('view:nodeOutdented', {
             nodeId,
             newParentId: grandparentId
         })

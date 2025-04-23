@@ -1,11 +1,13 @@
+// This file is deprecated. Use the EventBus from the 'evb' package instead.
+
 /**
  * EventBus - Simple pub/sub implementation for component communication
  */
 export class EventBus {
     constructor() {
-        this.subscribers = new Map();
+        this.subscribers = new Map()
     }
-    
+
     /**
      * Subscribe to an event
      * @param {string} event - Event name
@@ -14,21 +16,21 @@ export class EventBus {
      */
     subscribe(event, callback) {
         if (!this.subscribers.has(event)) {
-            this.subscribers.set(event, []);
+            this.subscribers.set(event, [])
         }
-        
-        const callbacks = this.subscribers.get(event);
-        callbacks.push(callback);
-        
+
+        const callbacks = this.subscribers.get(event)
+        callbacks.push(callback)
+
         // Return unsubscribe function
         return () => {
-            const index = callbacks.indexOf(callback);
+            const index = callbacks.indexOf(callback)
             if (index !== -1) {
-                callbacks.splice(index, 1);
+                callbacks.splice(index, 1)
             }
-        };
+        }
     }
-    
+
     /**
      * Publish an event
      * @param {string} event - Event name
@@ -36,28 +38,28 @@ export class EventBus {
      */
     publish(event, data = {}) {
         if (!this.subscribers.has(event)) {
-            return;
+            return
         }
-        
-        const callbacks = this.subscribers.get(event);
+
+        const callbacks = this.subscribers.get(event)
         callbacks.forEach(callback => {
             try {
-                callback(data);
+                callback(data)
             } catch (error) {
-                console.error(`Error in event handler for ${event}:`, error);
+                console.error(`Error in event handler for ${event}:`, error)
             }
-        });
+        })
     }
-    
+
     /**
      * Remove all subscribers for an event
      * @param {string} event - Event name
      */
     unsubscribeAll(event) {
         if (event) {
-            this.subscribers.delete(event);
+            this.subscribers.delete(event)
         } else {
-            this.subscribers.clear();
+            this.subscribers.clear()
         }
     }
 }
