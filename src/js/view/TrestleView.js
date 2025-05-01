@@ -529,26 +529,87 @@ export class TrestleView {
      * Initializes drag and drop functionality
      */
     initDragAndDrop() {
+        // First remove any existing listeners to prevent duplicates
+        this.cleanupDragListeners()
+
         // Setup drag handles
         const handles = this.rootElement.querySelectorAll('.ts-handle')
         handles.forEach(handle => {
-            handle.addEventListener('mousedown', this.handleDragStart.bind(this))
+            // Store the bound functions for later removal
+            handle._dragStartHandler = this.handleDragStart.bind(this)
+
             handle.setAttribute('draggable', 'true')
-            handle.addEventListener('dragstart', this.handleDragStart.bind(this))
+            handle.addEventListener('mousedown', handle._dragStartHandler)
+            handle.addEventListener('dragstart', handle._dragStartHandler)
+        })
+
+        // Setup entries as draggable
+        const entries = this.rootElement.querySelectorAll('.ts-entry')
+        entries.forEach(entry => {
+            entry.setAttribute('draggable', 'true')
         })
 
         // Setup drop zones
         const dropzones = this.rootElement.querySelectorAll('.dropzone')
         dropzones.forEach(dropzone => {
-            dropzone.addEventListener('dragover', this.handleDragOver.bind(this))
-            dropzone.addEventListener('dragleave', this.handleDragLeave.bind(this))
-            dropzone.addEventListener('drop', this.handleDrop.bind(this))
+            // Store the bound functions for later removal
+            dropzone._dragOverHandler = this.handleDragOver.bind(this)
+            dropzone._dragLeaveHandler = this.handleDragLeave.bind(this)
+            dropzone._dropHandler = this.handleDrop.bind(this)
+
+            dropzone.addEventListener('dragover', dropzone._dragOverHandler)
+            dropzone.addEventListener('dragleave', dropzone._dragLeaveHandler)
+            dropzone.addEventListener('drop', dropzone._dropHandler)
         })
 
         // Setup drag enter for items
         const items = this.rootElement.querySelectorAll('li')
         items.forEach(item => {
-            item.addEventListener('dragenter', this.handleDragEnter.bind(this))
+            // Store the bound function for later removal
+            item._dragEnterHandler = this.handleDragEnter.bind(this)
+
+            item.addEventListener('dragenter', item._dragEnterHandler)
+        })
+    }
+
+    /**
+     * Cleans up drag and drop event listeners
+     */
+    cleanupDragListeners() {
+        // Clean up drag handles
+        const handles = this.rootElement.querySelectorAll('.ts-handle')
+        handles.forEach(handle => {
+            if (handle._dragStartHandler) {
+                handle.removeEventListener('mousedown', handle._dragStartHandler)
+                handle.removeEventListener('dragstart', handle._dragStartHandler)
+                delete handle._dragStartHandler
+            }
+        })
+
+        // Clean up drop zones
+        const dropzones = this.rootElement.querySelectorAll('.dropzone')
+        dropzones.forEach(dropzone => {
+            if (dropzone._dragOverHandler) {
+                dropzone.removeEventListener('dragover', dropzone._dragOverHandler)
+                delete dropzone._dragOverHandler
+            }
+            if (dropzone._dragLeaveHandler) {
+                dropzone.removeEventListener('dragleave', dropzone._dragLeaveHandler)
+                delete dropzone._dragLeaveHandler
+            }
+            if (dropzone._dropHandler) {
+                dropzone.removeEventListener('drop', dropzone._dropHandler)
+                delete dropzone._dropHandler
+            }
+        })
+
+        // Clean up list items
+        const items = this.rootElement.querySelectorAll('li')
+        items.forEach(item => {
+            if (item._dragEnterHandler) {
+                item.removeEventListener('dragenter', item._dragEnterHandler)
+                delete item._dragEnterHandler
+            }
         })
     }
 
@@ -556,28 +617,48 @@ export class TrestleView {
      * Handles the start of dragging
      */
     handleDragStart(event) {
+        // Prevent bubbling to avoid multiple drag starts
+        event.stopPropagation()
+
+        // Find the closest entry
         const entry = event.target.closest('.ts-entry')
-        if (!entry) return
+        if (!entry) {
+            console.log('No entry found in drag start')
+            return
+        }
 
         // Store the dragged node ID
         this.draggedNodeId = entry.id
+        console.log('Drag started for node:', this.draggedNodeId)
 
         // Set drag data transfer
         if (event.dataTransfer) {
+            // Clear any existing data
+            event.dataTransfer.clearData()
+
+            // Set the node ID as data
             event.dataTransfer.setData('text/plain', entry.id)
+            event.dataTransfer.setData('application/x-node-id', entry.id)
             event.dataTransfer.effectAllowed = 'move'
 
             // Create custom drag image
-            const dragImage = entry.cloneNode(true)
-            dragImage.style.width = `${entry.offsetWidth}px`
-            dragImage.style.opacity = '0.7'
-            document.body.appendChild(dragImage)
-            event.dataTransfer.setDragImage(dragImage, 10, 10)
+            try {
+                const dragImage = entry.cloneNode(true)
+                dragImage.style.width = `${entry.offsetWidth}px`
+                dragImage.style.opacity = '0.7'
+                dragImage.style.position = 'absolute'
+                dragImage.style.top = '-1000px'
+                document.body.appendChild(dragImage)
+                event.dataTransfer.setDragImage(dragImage, 10, 10)
 
-            // Clean up
-            setTimeout(() => {
-                document.body.removeChild(dragImage)
-            }, 0)
+                // Clean up
+                setTimeout(() => {
+                    document.body.removeChild(dragImage)
+                }, 10)
+            } catch (err) {
+                console.warn('Error setting drag image:', err)
+                // Continue without custom drag image if it fails
+            }
         }
 
         // Add dragging class
@@ -585,6 +666,54 @@ export class TrestleView {
 
         // Select the node
         this.selectNode(entry.id)
+
+        // Update UI to show drag state
+        const listItem = entry.closest('li')
+        if (listItem) {
+            listItem.classList.add('ts-dragging-item')
+        }
+
+        // Set a global class on body to indicate drag is in progress
+        document.body.classList.add('ts-dragging-active')
+
+        // Add a cleanup function for the end of drag
+        const dragEndHandler = () => {
+            this.handleDragEnd()
+            document.removeEventListener('dragend', dragEndHandler)
+        }
+
+        document.addEventListener('dragend', dragEndHandler)
+    }
+
+    /**
+     * Handles the end of dragging
+     */
+    handleDragEnd() {
+        console.log('Drag ended')
+
+        // Clean up dragging classes
+        document.querySelectorAll('.ts-dragging').forEach(el => {
+            el.classList.remove('ts-dragging')
+        })
+
+        document.querySelectorAll('.ts-dragging-item').forEach(el => {
+            el.classList.remove('ts-dragging-item')
+        })
+
+        document.querySelectorAll('.ts-highlight').forEach(el => {
+            el.classList.remove('ts-highlight')
+        })
+
+        document.querySelectorAll('.dropzone.active').forEach(el => {
+            el.classList.remove('active')
+        })
+
+        // Remove global dragging class
+        document.body.classList.remove('ts-dragging-active')
+
+        // Reset drag state
+        this.draggedNodeId = null
+        this.dragTarget = null
     }
 
     /**
@@ -593,13 +722,23 @@ export class TrestleView {
     handleDragOver(event) {
         // Allow drop
         event.preventDefault()
+        event.stopPropagation()
 
         if (!this.draggedNodeId) return
 
+        // Find the dropzone element
+        let dropzone = event.target
+        while (dropzone && !dropzone.classList.contains('dropzone')) {
+            dropzone = dropzone.parentElement
+        }
+
+        if (!dropzone) return
+
         // Add active class
-        event.target.classList.add('active')
+        dropzone.classList.add('active')
 
         // Set the drop effect
+        event.dataTransfer.effectAllowed = 'move'
         event.dataTransfer.dropEffect = 'move'
     }
 
@@ -607,8 +746,16 @@ export class TrestleView {
      * Handles leaving a drop zone
      */
     handleDragLeave(event) {
+        // Find the dropzone element
+        let dropzone = event.target
+        while (dropzone && !dropzone.classList.contains('dropzone')) {
+            dropzone = dropzone.parentElement
+        }
+
+        if (!dropzone) return
+
         // Remove active class
-        event.target.classList.remove('active')
+        dropzone.classList.remove('active')
     }
 
     /**
@@ -643,19 +790,44 @@ export class TrestleView {
     handleDrop(event) {
         // Prevent default behavior
         event.preventDefault()
+        event.stopPropagation()
 
-        // Get dropzone
-        const dropzone = event.target
+        // Ensure we're working with the dropzone element
+        let dropzone = event.target
+        while (dropzone && !dropzone.classList.contains('dropzone')) {
+            dropzone = dropzone.parentElement
+        }
+
+        if (!dropzone) return
+
+        // Remove active class
         dropzone.classList.remove('active')
 
-        if (!this.draggedNodeId) return
+        // Check if we have a dragged node
+        if (!this.draggedNodeId) {
+            console.log('No dragged node ID')
+            return
+        }
 
         const draggedLi = this.nodeElements.get(this.draggedNodeId)
-        if (!draggedLi) return
+        if (!draggedLi) {
+            console.log('Dragged node element not found')
+            return
+        }
 
-        // Get target
+        // Get target list item
         const targetLi = dropzone.closest('li')
-        if (!targetLi) return
+        if (!targetLi) {
+            console.log('Target list item not found')
+            return
+        }
+
+        // Get target entry
+        const targetEntry = targetLi.querySelector('.ts-entry')
+        if (!targetEntry) {
+            console.log('Target entry not found')
+            return
+        }
 
         // Prevent dropping onto a child element
         if (draggedLi.contains(targetLi)) {
@@ -663,23 +835,31 @@ export class TrestleView {
             return
         }
 
-        // Get parent and determine position
+        // Get parent UL and determine position
         const parentUl = targetLi.parentElement
 
-        const isDropAfter = dropzone === targetLi.querySelector('.dropzone')
+        // Check if we're dropping before or onto the target
+        // We're dropping before if the dropzone is the first child of the list item
+        const dropzones = Array.from(targetLi.querySelectorAll('.dropzone'))
+        const isDropAfter = dropzones.indexOf(dropzone) === 0
+
+        console.log('Drop position:', isDropAfter ? 'before' : 'as child')
 
         let newParentId
         let newIndex
 
         if (isDropAfter) {
-            // Drop as sibling before
-            newParentId = targetLi.parentElement.closest('li')?.dataset.nodeId || 'trestle-root'
+            // Drop as sibling before the target
+            const parentNode = parentUl.closest('li')
+            newParentId = parentNode ? parentNode.dataset.nodeId : 'trestle-root'
 
             // Get index in siblings
             const siblings = Array.from(parentUl.children)
             newIndex = siblings.indexOf(targetLi)
+
+            console.log('Drop as sibling - Parent:', newParentId, 'Index:', newIndex)
         } else {
-            // Drop as child
+            // Drop as child of the target
             newParentId = targetLi.dataset.nodeId
 
             // Get or create a child list
@@ -693,14 +873,27 @@ export class TrestleView {
 
             // Add to the end of children
             newIndex = childUl.children.length
+
+            console.log('Drop as child - Parent:', newParentId, 'Index:', newIndex)
         }
 
         // Emit move event
+        console.log('Moving node:', this.draggedNodeId, 'to parent:', newParentId, 'at index:', newIndex)
         this.eventBus.emit('view:moveNode', {
             nodeId: this.draggedNodeId,
             newParentId: newParentId,
             newIndex: newIndex
         })
+
+        // Update the DOM for immediate feedback
+        if (isDropAfter) {
+            // Insert before target
+            parentUl.insertBefore(draggedLi, targetLi)
+        } else {
+            // Append to target's children
+            const childUl = targetLi.querySelector('ul')
+            childUl.appendChild(draggedLi)
+        }
 
         // Clean up
         this.draggedNodeId = null
@@ -710,6 +903,12 @@ export class TrestleView {
         document.querySelectorAll('.ts-highlight').forEach(el => {
             el.classList.remove('ts-highlight')
         })
+
+        // Reinitialize drag and drop for the moved elements
+        this.initDragAndDrop()
+
+        // Add contextual add buttons
+        this.addContextualAddButtons()
     }
 
     /**
