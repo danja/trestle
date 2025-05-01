@@ -1,16 +1,11 @@
-/**
- * TrestleView - Responsible for rendering the UI and handling DOM interactions
- */
-// import { marked } from 'marked';
-
-
+// src/js/view/TrestleView.js
 export class TrestleView {
     /**
-     * @param {HTMLElement} rootElement - The root DOM element for the trestle
-     * @param {EventBus} eventBus - Event bus for component communication
+     * Creates a new TrestleView instance
+     * @param {HTMLElement} rootElement - The root DOM element for the view
+     * @param {EventBus} eventBus - The event bus for communication
      */
     constructor(rootElement, eventBus) {
-
         this.rootElement = rootElement
         this.eventBus = eventBus
         this.template = document.getElementById('entry-template')
@@ -18,18 +13,24 @@ export class TrestleView {
         this.selectedNodeId = null
         this.draggedNodeId = null
         this.dragTarget = null
+        this.editingId = null
 
-        // Register event handlers
+        // Event listeners
         this.eventBus.on('model:loaded', this.renderTree.bind(this))
         this.eventBus.on('model:created', this.renderTree.bind(this))
         this.eventBus.on('node:added', this.handleNodeAdded.bind(this))
         this.eventBus.on('node:updated', this.handleNodeUpdated.bind(this))
         this.eventBus.on('node:deleted', this.handleNodeDeleted.bind(this))
+        this.eventBus.on('view:nodeIndented', this.handleNodeIndented.bind(this))
+        this.eventBus.on('view:nodeOutdented', this.handleNodeOutdented.bind(this))
+
+        // Initialize keyboard shortcuts
+        document.addEventListener('keydown', this.handleGlobalKeyDown.bind(this))
     }
 
     /**
-     * Renders the entire tree structure
-     * @param {Object} data - The loaded model data
+     * Renders the entire tree from data
+     * @param {Object} data - The tree data to render
      */
     renderTree(data) {
         // Clear existing content
@@ -39,19 +40,18 @@ export class TrestleView {
         const rootNode = data.nodes.find(node => node.type === 'RootNode')
         if (!rootNode) {
             console.error('No root node found')
-
             return
         }
 
         // Build tree structure
         const tree = this.buildTreeStructure(data.nodes, rootNode.id)
 
-        // Render the tree
+        // Create root element
         const rootUl = document.createElement('ul')
         rootUl.className = 'ts-root'
         this.rootElement.appendChild(rootUl)
 
-        // Render each child of the root
+        // Render all children of root
         for (const childId of tree.children || []) {
             this.renderNode(childId, rootUl, tree.nodes)
         }
@@ -61,26 +61,53 @@ export class TrestleView {
 
         // Initialize drag and drop
         this.initDragAndDrop()
+
+        // Add contextual add buttons
+        this.addContextualAddButtons()
+
+        // Show an empty state if there are no items
+        if (!(tree.children && tree.children.length)) {
+            this.showEmptyState(rootUl)
+        }
     }
 
     /**
-     * Builds a hierarchical tree structure from flat nodes list
-     * @param {Array} nodes - List of nodes from the model
-     * @param {string} rootId - ID of the root node
-     * @returns {Object} - Tree structure with nodes and hierarchy
+     * Shows an empty state with a prompt to add the first item
+     * @param {HTMLElement} rootUl - The root list element
+     */
+    showEmptyState(rootUl) {
+        const emptyLi = document.createElement('li')
+        emptyLi.className = 'ts-empty-state'
+
+        const emptyText = document.createElement('div')
+        emptyText.className = 'ts-empty-text'
+        emptyText.textContent = 'Click here to add your first item'
+        emptyText.addEventListener('click', () => {
+            this.eventBus.emit('view:addChild', { parentId: 'trestle-root' })
+        })
+
+        emptyLi.appendChild(emptyText)
+        rootUl.appendChild(emptyLi)
+    }
+
+    /**
+     * Builds a tree structure from flat node data
+     * @param {Array} nodes - The flat array of nodes
+     * @param {string} rootId - The ID of the root node
+     * @returns {Object} The tree structure
      */
     buildTreeStructure(nodes, rootId) {
         const nodesMap = new Map()
 
-        // First pass: create a map of all nodes
+        // Create a map of nodes
         for (const node of nodes) {
             nodesMap.set(node.id, { ...node })
         }
 
-        // Second pass: build parent-child relationships
+        // Build parent-child relationships
         for (const node of nodesMap.values()) {
             if (node.children) {
-                // Ensure children exist in the map
+                // Filter out non-existent children
                 node.children = node.children.filter(childId => nodesMap.has(childId))
             } else {
                 node.children = []
@@ -94,11 +121,11 @@ export class TrestleView {
     }
 
     /**
-     * Renders a single node and its children
-     * @param {string} nodeId - ID of the node to render
-     * @param {HTMLElement} parentElement - Parent DOM element
-     * @param {Map} nodesMap - Map of all nodes
-     * @returns {HTMLElement} - The created node element
+     * Renders a node and its children
+     * @param {string} nodeId - The ID of the node to render
+     * @param {HTMLElement} parentElement - The parent element to append to
+     * @param {Map} nodesMap - The map of all nodes
+     * @returns {HTMLElement} The rendered node element
      */
     renderNode(nodeId, parentElement, nodesMap) {
         const node = nodesMap.get(nodeId)
@@ -113,11 +140,11 @@ export class TrestleView {
         dropzone.className = 'dropzone'
         li.appendChild(dropzone)
 
-        // Clone entry template
+        // Clone the entry template
         const entry = this.template.content.cloneNode(true).querySelector('.ts-entry')
         entry.id = nodeId
 
-        // Set node title
+        // Set title
         const titleElement = entry.querySelector('.ts-title')
         titleElement.textContent = node.title || ''
 
@@ -144,34 +171,105 @@ export class TrestleView {
             li.classList.add('ts-closed')
         }
 
-        // Append to parent
+        // Append to parent element
         parentElement.appendChild(li)
 
         return li
     }
 
     /**
-     * Setup event listeners for trestle interactions
+     * Adds contextual add buttons between items
      */
-    setupEventListeners() {
-        // Delegate events from the root element
-        this.rootElement.addEventListener('click', this.handleClick.bind(this))
-        this.rootElement.addEventListener('dblclick', this.handleDblClick.bind(this))
-        this.rootElement.addEventListener('keydown', this.handleKeyDown.bind(this))
+    addContextualAddButtons() {
+        const dropzones = this.rootElement.querySelectorAll('.dropzone')
 
-        // Listen for focus/blur on contenteditable elements
-        this.rootElement.addEventListener('focus', this.handleFocus.bind(this), true)
-        this.rootElement.addEventListener('blur', this.handleBlur.bind(this), true)
+        dropzones.forEach(dropzone => {
+            const addButton = document.createElement('div')
+            addButton.className = 'ts-add-between'
+            addButton.title = 'Add item here'
+
+            addButton.addEventListener('click', (event) => {
+                event.stopPropagation()
+
+                const listItem = dropzone.closest('li')
+                if (!listItem) return
+
+                const nodeId = listItem.dataset.nodeId
+                const parentElement = listItem.parentElement
+                const parentNode = parentElement.closest('li')
+                const parentId = parentNode ? parentNode.dataset.nodeId : 'trestle-root'
+
+                // Find the index position
+                const siblings = Array.from(parentElement.children)
+                const index = siblings.indexOf(listItem)
+
+                this.eventBus.emit('view:insertNodeAt', {
+                    parentId,
+                    index: index
+                })
+            })
+
+            dropzone.appendChild(addButton)
+        })
     }
 
     /**
-     * Handle click events within the trestle
-     * @param {Event} event - The click event
+     * Sets up event listeners for the tree
+     */
+    setupEventListeners() {
+        // Mouse events
+        this.rootElement.addEventListener('click', this.handleClick.bind(this))
+        this.rootElement.addEventListener('dblclick', this.handleDblClick.bind(this))
+
+        // Keyboard events - focusable elements
+        this.rootElement.addEventListener('keydown', this.handleKeyDown.bind(this))
+
+        // Focus events
+        this.rootElement.addEventListener('focus', this.handleFocus.bind(this), true)
+        this.rootElement.addEventListener('blur', this.handleBlur.bind(this), true)
+
+        // Add global click handler to close menus/panels when clicking elsewhere
+        document.addEventListener('click', (event) => {
+            // Close shortcuts panel if open and clicking outside of it
+            const shortcutsPanel = document.getElementById('shortcuts-text')
+            if (shortcutsPanel && !shortcutsPanel.classList.contains('hidden')) {
+                if (!shortcutsPanel.contains(event.target) &&
+                    event.target.id !== 'shortcutsButton' &&
+                    event.target.id !== 'mobileShortcutsButton') {
+                    shortcutsPanel.classList.add('hidden')
+                }
+            }
+        })
+    }
+
+    /**
+     * Handles global keyboard shortcuts
+     */
+    handleGlobalKeyDown(event) {
+        // Ctrl+S for save
+        if (event.ctrlKey && event.key === 's') {
+            event.preventDefault()
+            document.getElementById('saveButton').click()
+        }
+
+        // Escape to cancel current editing
+        if (event.key === 'Escape' && this.editingId) {
+            const editingTitle = document.getElementById(this.editingId)?.querySelector('.ts-title')
+            if (editingTitle && editingTitle.isContentEditable) {
+                editingTitle.blur()
+                this.selectNode(this.editingId)
+                this.editingId = null
+            }
+        }
+    }
+
+    /**
+     * Handles click events on the tree
      */
     handleClick(event) {
         const target = event.target
 
-        // Handle expander clicks
+        // Toggle expander
         if (target.classList.contains('ts-expander')) {
             const li = target.closest('li')
             li.classList.toggle('ts-closed')
@@ -180,13 +278,14 @@ export class TrestleView {
             return
         }
 
-        // Handle action button clicks
-        if (target.classList.contains('ts-card')) {
+        // Show card
+        if (target.classList.contains('ts-card') || (event.altKey && target.classList.contains('ts-title'))) {
             this.showCard(target.closest('.ts-entry').id)
             event.stopPropagation()
             return
         }
 
+        // Add child
         if (target.classList.contains('ts-addChild')) {
             const entryId = target.closest('.ts-entry').id
             this.eventBus.emit('view:addChild', { parentId: entryId })
@@ -194,6 +293,7 @@ export class TrestleView {
             return
         }
 
+        // Delete node
         if (target.classList.contains('ts-delete')) {
             const entryId = target.closest('.ts-entry').id
             if (confirm('Are you sure you want to delete this item and all its children?')) {
@@ -203,7 +303,7 @@ export class TrestleView {
             return
         }
 
-        // Handle entry selection
+        // Select node
         if (target.classList.contains('ts-entry') || target.classList.contains('ts-title')) {
             const entry = target.classList.contains('ts-entry') ? target : target.closest('.ts-entry')
             this.selectNode(entry.id)
@@ -213,34 +313,40 @@ export class TrestleView {
     }
 
     /**
-     * Handle double-click events for editing
-     * @param {Event} event - The double-click event
+     * Handles double-click events on the tree
      */
     handleDblClick(event) {
         const target = event.target
 
-        // Make title editable on double-click
+        // Edit title
         if (target.classList.contains('ts-title')) {
-            target.contentEditable = true
-            target.focus()
-
-            // Select all text
-            const range = document.createRange()
-            range.selectNodeContents(target)
-            const selection = window.getSelection()
-            selection.removeAllRanges()
-            selection.addRange(range)
-
+            this.startEditing(target)
             event.stopPropagation()
         }
     }
 
     /**
-     * Handle keyboard events for navigation and editing
-     * @param {KeyboardEvent} event - The keydown event
+     * Starts editing a node title
+     * @param {HTMLElement} titleElement - The title element to edit
+     */
+    startEditing(titleElement) {
+        titleElement.contentEditable = true
+        titleElement.focus()
+        this.editingId = titleElement.closest('.ts-entry').id
+
+        // Select all text
+        const range = document.createRange()
+        range.selectNodeContents(titleElement)
+        const selection = window.getSelection()
+        selection.removeAllRanges()
+        selection.addRange(range)
+    }
+
+    /**
+     * Handles keyboard events while editing nodes
      */
     handleKeyDown(event) {
-        // Only handle events on editable elements
+        // Only process events in editable elements
         if (!event.target.isContentEditable) return
 
         const entry = event.target.closest('.ts-entry')
@@ -248,21 +354,23 @@ export class TrestleView {
 
         switch (event.key) {
             case 'Enter':
-                if (!event.shiftKey) {
-                    // Prevent default to avoid adding a new line
-                    event.preventDefault()
-
-                    // Finish editing
-                    event.target.contentEditable = false
-
-                    // Save the changes
-                    const nodeId = entry.id
-                    const newTitle = event.target.textContent.trim()
-                    this.eventBus.emit('view:updateNode', { nodeId, properties: { title: newTitle } })
-
-                    // Insert new node after current
-                    this.eventBus.emit('view:addSibling', { nodeId })
+                if (event.shiftKey) {
+                    // Allow shift+enter for line breaks
+                    return
                 }
+
+                // Save the current edit
+                event.preventDefault()
+                event.target.contentEditable = false
+                this.editingId = null
+
+                // Update node title
+                const nodeId = entry.id
+                const newTitle = event.target.textContent.trim()
+                this.eventBus.emit('view:updateNode', { nodeId, properties: { title: newTitle } })
+
+                // Add a new sibling item
+                this.eventBus.emit('view:addSibling', { nodeId })
                 break
 
             case 'Tab':
@@ -277,32 +385,107 @@ export class TrestleView {
                 break
 
             case 'Escape':
-                // Cancel editing
+                // Cancel edit
                 event.preventDefault()
-
-                // Restore original content (could be enhanced with a stored original value)
-                // danny     event.target.contentEditable = false
-                event.target.contentEditable = true
+                event.target.contentEditable = false
+                this.editingId = null
                 this.selectNode(entry.id)
                 break
 
             case 'ArrowUp':
-                // Navigate up
-                event.preventDefault()
-                this.navigateUp(entry.id)
+                if (event.ctrlKey) {
+                    // Move node up
+                    event.preventDefault()
+                    this.moveNodeUp(entry.id)
+                } else {
+                    // Navigate up
+                    event.preventDefault()
+                    this.navigateUp(entry.id)
+                }
                 break
 
             case 'ArrowDown':
-                // Navigate down
-                event.preventDefault()
-                this.navigateDown(entry.id)
+                if (event.ctrlKey) {
+                    // Move node down
+                    event.preventDefault()
+                    this.moveNodeDown(entry.id)
+                } else {
+                    // Navigate down
+                    event.preventDefault()
+                    this.navigateDown(entry.id)
+                }
                 break
         }
     }
 
     /**
-     * Handle focus events on editable elements
-     * @param {FocusEvent} event - The focus event
+     * Moves a node up in its parent's children list
+     * @param {string} nodeId - The ID of the node to move
+     */
+    moveNodeUp(nodeId) {
+        const nodeLi = this.nodeElements.get(nodeId)
+        if (!nodeLi) return
+
+        const parent = nodeLi.parentElement
+        const prevLi = nodeLi.previousElementSibling
+
+        if (!prevLi) return // Already at the top
+
+        const parentNode = parent.closest('li')
+        const parentId = parentNode ? parentNode.dataset.nodeId : 'trestle-root'
+
+        // Find index
+        const children = Array.from(parent.children)
+        const currentIndex = children.indexOf(nodeLi)
+        const newIndex = currentIndex - 1
+
+        this.eventBus.emit('view:moveNode', {
+            nodeId,
+            newParentId: parentId,
+            newIndex
+        })
+
+        // Update the DOM directly for immediate feedback
+        parent.insertBefore(nodeLi, prevLi)
+    }
+
+    /**
+     * Moves a node down in its parent's children list
+     * @param {string} nodeId - The ID of the node to move
+     */
+    moveNodeDown(nodeId) {
+        const nodeLi = this.nodeElements.get(nodeId)
+        if (!nodeLi) return
+
+        const parent = nodeLi.parentElement
+        const nextLi = nodeLi.nextElementSibling
+
+        if (!nextLi) return // Already at the bottom
+
+        const parentNode = parent.closest('li')
+        const parentId = parentNode ? parentNode.dataset.nodeId : 'trestle-root'
+
+        // Find index
+        const children = Array.from(parent.children)
+        const currentIndex = children.indexOf(nodeLi)
+        const newIndex = currentIndex + 1
+
+        this.eventBus.emit('view:moveNode', {
+            nodeId,
+            newParentId: parentId,
+            newIndex
+        })
+
+        // Update the DOM directly for immediate feedback
+        if (nextLi.nextElementSibling) {
+            parent.insertBefore(nodeLi, nextLi.nextElementSibling)
+        } else {
+            parent.appendChild(nodeLi)
+        }
+    }
+
+    /**
+     * Handles focus events
      */
     handleFocus(event) {
         if (event.target.classList.contains('ts-title')) {
@@ -312,27 +495,28 @@ export class TrestleView {
     }
 
     /**
-     * Handle blur events on editable elements
-     * @param {FocusEvent} event - The blur event
+     * Handles blur events
      */
     handleBlur(event) {
         if (event.target.classList.contains('ts-title') && event.target.isContentEditable) {
-            // Save changes when focus is lost
-            // danny  event.target.contentEditable = false
-
+            // Save changes on blur
             const entry = event.target.closest('.ts-entry')
             const nodeId = entry.id
             const newTitle = event.target.textContent.trim()
 
             this.eventBus.emit('view:updateNode', { nodeId, properties: { title: newTitle } })
+
+            // Make non-editable
+            event.target.contentEditable = false
+            this.editingId = null
         }
     }
 
     /**
-     * Set up drag and drop functionality
+     * Initializes drag and drop functionality
      */
     initDragAndDrop() {
-        // Add drag start event to handles
+        // Setup drag handles
         const handles = this.rootElement.querySelectorAll('.ts-handle')
         handles.forEach(handle => {
             handle.addEventListener('mousedown', this.handleDragStart.bind(this))
@@ -340,7 +524,7 @@ export class TrestleView {
             handle.addEventListener('dragstart', this.handleDragStart.bind(this))
         })
 
-        // Add drop targets
+        // Setup drop zones
         const dropzones = this.rootElement.querySelectorAll('.dropzone')
         dropzones.forEach(dropzone => {
             dropzone.addEventListener('dragover', this.handleDragOver.bind(this))
@@ -348,7 +532,7 @@ export class TrestleView {
             dropzone.addEventListener('drop', this.handleDrop.bind(this))
         })
 
-        // Add dragenter to li elements to handle nesting
+        // Setup drag enter for items
         const items = this.rootElement.querySelectorAll('li')
         items.forEach(item => {
             item.addEventListener('dragenter', this.handleDragEnter.bind(this))
@@ -356,29 +540,28 @@ export class TrestleView {
     }
 
     /**
-     * Handle the start of drag operations
-     * @param {DragEvent} event - The dragstart event
+     * Handles the start of dragging
      */
     handleDragStart(event) {
         const entry = event.target.closest('.ts-entry')
         if (!entry) return
 
-        // Set dragged node
+        // Store the dragged node ID
         this.draggedNodeId = entry.id
 
-        // Set drag image and data
+        // Set drag data transfer
         if (event.dataTransfer) {
             event.dataTransfer.setData('text/plain', entry.id)
             event.dataTransfer.effectAllowed = 'move'
 
-            // Create drag image
+            // Create custom drag image
             const dragImage = entry.cloneNode(true)
             dragImage.style.width = `${entry.offsetWidth}px`
             dragImage.style.opacity = '0.7'
             document.body.appendChild(dragImage)
             event.dataTransfer.setDragImage(dragImage, 10, 10)
 
-            // Clean up the clone after drag starts
+            // Clean up
             setTimeout(() => {
                 document.body.removeChild(dragImage)
             }, 0)
@@ -392,25 +575,23 @@ export class TrestleView {
     }
 
     /**
-     * Handle dragover events for drop targets
-     * @param {DragEvent} event - The dragover event
+     * Handles dragging over a drop zone
      */
     handleDragOver(event) {
-        // Prevent default to allow drop
+        // Allow drop
         event.preventDefault()
 
         if (!this.draggedNodeId) return
 
-        // Add active class to dropzone
+        // Add active class
         event.target.classList.add('active')
 
-        // Set drop effect
+        // Set the drop effect
         event.dataTransfer.dropEffect = 'move'
     }
 
     /**
-     * Handle dragleave events for drop targets
-     * @param {DragEvent} event - The dragleave event
+     * Handles leaving a drop zone
      */
     handleDragLeave(event) {
         // Remove active class
@@ -418,42 +599,39 @@ export class TrestleView {
     }
 
     /**
-     * Handle dragenter events for potential parent elements
-     * @param {DragEvent} event - The dragenter event
+     * Handles entering a node during drag
      */
     handleDragEnter(event) {
         const li = event.target.closest('li')
         if (!li || !this.draggedNodeId) return
 
-        // Store potential drop target for nesting
+        // Store the drag target
         this.dragTarget = li
 
-        // Highlight the potential parent
+        // Add highlight class
         li.classList.add('ts-highlight')
 
-        // Cancel any existing timers
+        // Auto-expand closed nodes after hovering
         if (this.dragEnterTimer) {
             clearTimeout(this.dragEnterTimer)
         }
 
-        // Set a delay to open the node if hovered
         this.dragEnterTimer = setTimeout(() => {
             if (li.classList.contains('ts-closed')) {
                 li.classList.remove('ts-closed')
                 li.classList.add('ts-open')
             }
-        }, 700) // 700ms delay to open
+        }, 700)
     }
 
     /**
-     * Handle drop events
-     * @param {DragEvent} event - The drop event
+     * Handles dropping a node
      */
     handleDrop(event) {
-        // Prevent default action
+        // Prevent default behavior
         event.preventDefault()
 
-        // Get dropzone and its parent li
+        // Get dropzone
         const dropzone = event.target
         dropzone.classList.remove('active')
 
@@ -462,37 +640,36 @@ export class TrestleView {
         const draggedLi = this.nodeElements.get(this.draggedNodeId)
         if (!draggedLi) return
 
-        // Get target li (the one containing the dropzone)
+        // Get target
         const targetLi = dropzone.closest('li')
         if (!targetLi) return
 
-        // Prevent dropping onto a child of the dragged element
+        // Prevent dropping onto a child element
         if (draggedLi.contains(targetLi)) {
             console.warn('Cannot drop onto a child element')
             return
         }
 
-        // Get parent ul
+        // Get parent and determine position
         const parentUl = targetLi.parentElement
 
-        // Determine insert position and parent
         const isDropAfter = dropzone === targetLi.querySelector('.dropzone')
 
         let newParentId
         let newIndex
 
         if (isDropAfter) {
-            // Dropping between items: same parent as target, just before target
+            // Drop as sibling before
             newParentId = targetLi.parentElement.closest('li')?.dataset.nodeId || 'trestle-root'
 
-            // Find all children of the parent and get the index
+            // Get index in siblings
             const siblings = Array.from(parentUl.children)
             newIndex = siblings.indexOf(targetLi)
         } else {
-            // Dropping onto an item: becomes a child of target
+            // Drop as child
             newParentId = targetLi.dataset.nodeId
 
-            // Get the target's child list or create one
+            // Get or create a child list
             let childUl = targetLi.querySelector('ul')
             if (!childUl) {
                 childUl = document.createElement('ul')
@@ -501,11 +678,11 @@ export class TrestleView {
                 targetLi.classList.add('ts-open')
             }
 
-            // Add to end of children
+            // Add to the end of children
             newIndex = childUl.children.length
         }
 
-        // Publish move event
+        // Emit move event
         this.eventBus.emit('view:moveNode', {
             nodeId: this.draggedNodeId,
             newParentId: newParentId,
@@ -516,61 +693,57 @@ export class TrestleView {
         this.draggedNodeId = null
         draggedLi.classList.remove('ts-dragging')
 
-        // Remove all highlights
+        // Remove highlights
         document.querySelectorAll('.ts-highlight').forEach(el => {
             el.classList.remove('ts-highlight')
         })
     }
 
     /**
-     * Select a node and update UI
-     * @param {string} nodeId - ID of node to select
+     * Selects a node
+     * @param {string} nodeId - The ID of the node to select
      */
     selectNode(nodeId) {
-        // Deselect previous node
+        // Deselect previous
         if (this.selectedNodeId) {
             const prevSelected = document.getElementById(this.selectedNodeId)
             if (prevSelected) {
                 prevSelected.classList.remove('ts-selected')
-
-                // Make title not editable
-                const prevTitle = prevSelected.querySelector('.ts-title')
-                if (prevTitle) {
-                    // danny     prevTitle.contentEditable = false
-                }
             }
         }
 
-        // Select new node
+        // Select new
         this.selectedNodeId = nodeId
         const entry = document.getElementById(nodeId)
         if (entry) {
             entry.classList.add('ts-selected')
+
+            // Ensure it's visible
+            entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
         }
     }
 
     /**
-     * Navigate to the previous node (up)
-     * @param {string} currentNodeId - ID of current node
+     * Navigates to the node above the current one
+     * @param {string} currentNodeId - The ID of the current node
      */
     navigateUp(currentNodeId) {
         const currentLi = this.nodeElements.get(currentNodeId)
         if (!currentLi) return
 
-        // Try to find previous sibling
         let prevLi = currentLi.previousElementSibling
 
         if (prevLi) {
-            // If previous has children and is open, navigate to last child recursively
+            // Find the deepest last child of the previous sibling if expanded
             while (prevLi.classList.contains('ts-open') && prevLi.querySelector('ul')?.lastElementChild) {
                 prevLi = prevLi.querySelector('ul').lastElementChild
             }
 
-            // Select the previous item
+            // Select the found node
             const prevId = prevLi.querySelector('.ts-entry').id
             this.selectNode(prevId)
         } else {
-            // No previous sibling, go to parent
+            // Go to parent if no previous sibling
             const parentLi = currentLi.parentElement.closest('li')
             if (parentLi) {
                 const parentId = parentLi.querySelector('.ts-entry').id
@@ -580,14 +753,14 @@ export class TrestleView {
     }
 
     /**
-     * Navigate to the next node (down)
-     * @param {string} currentNodeId - ID of current node
+     * Navigates to the node below the current one
+     * @param {string} currentNodeId - The ID of the current node
      */
     navigateDown(currentNodeId) {
         const currentLi = this.nodeElements.get(currentNodeId)
         if (!currentLi) return
 
-        // If current node has children and is open, go to first child
+        // Check for children first if expanded
         if (currentLi.classList.contains('ts-open')) {
             const firstChild = currentLi.querySelector('ul > li')
             if (firstChild) {
@@ -597,7 +770,7 @@ export class TrestleView {
             }
         }
 
-        // Try to find next sibling
+        // Check for next sibling
         let nextLi = currentLi.nextElementSibling
         if (nextLi) {
             const nextId = nextLi.querySelector('.ts-entry').id
@@ -605,7 +778,7 @@ export class TrestleView {
             return
         }
 
-        // No next sibling, go up and find next of parent
+        // Walk up the tree and find the next sibling of a parent
         let parent = currentLi.parentElement.closest('li')
         while (parent) {
             const parentNext = parent.nextElementSibling
@@ -619,19 +792,18 @@ export class TrestleView {
     }
 
     /**
-     * Show the card view for a node
-     * @param {string} nodeId - ID of the node
+     * Shows the card view for a node
+     * @param {string} nodeId - The ID of the node to show
      */
     showCard(nodeId) {
-        // Get the node entry
         const entry = document.getElementById(nodeId)
         if (!entry) return
 
-        // Get node data
+        // Get node info
         const title = entry.querySelector('.ts-title').textContent
         const date = entry.querySelector('.date').textContent
 
-        // Get description from model via event
+        // Get full node data
         this.eventBus.emit('view:getNodeData', {
             nodeId,
             callback: (node) => {
@@ -641,12 +813,12 @@ export class TrestleView {
                 const cardDate = document.getElementById('card-date')
                 const cardDescription = document.getElementById('card-description')
 
-                // Set card data
+                // Set card content
                 cardTitle.textContent = title
                 cardNid.textContent = nodeId
                 cardDate.textContent = date
 
-                // Set description (markdown)
+                // Set description
                 cardDescription.value = node.description || ''
 
                 // Store node ID with the card
@@ -655,15 +827,15 @@ export class TrestleView {
                 // Show the card
                 card.classList.remove('hidden')
 
-                // Focus the description for editing
+                // Focus description field
                 cardDescription.focus()
             }
         })
     }
 
     /**
-     * Handle node added event
-     * @param {Object} data - Event data with node information
+     * Handles a node being added
+     * @param {Object} data - The node data
      */
     handleNodeAdded(data) {
         const { node, parentId } = data
@@ -672,6 +844,12 @@ export class TrestleView {
         let parentElement
         if (parentId === 'trestle-root') {
             parentElement = this.rootElement.querySelector('ul')
+
+            // Remove empty state if present
+            const emptyState = parentElement.querySelector('.ts-empty-state')
+            if (emptyState) {
+                emptyState.remove()
+            }
         } else {
             const parentLi = this.nodeElements.get(parentId)
             if (!parentLi) {
@@ -679,7 +857,7 @@ export class TrestleView {
                 return
             }
 
-            // Check if parent has a child list
+            // Get or create child list
             let ul = parentLi.querySelector('ul')
             if (!ul) {
                 ul = document.createElement('ul')
@@ -691,42 +869,39 @@ export class TrestleView {
             parentElement = ul
         }
 
-        // Create nodes map for rendering
+        // Create node map for rendering
         const nodesMap = new Map()
         nodesMap.set(node.id, node)
 
         // Render the new node
         const newNodeElement = this.renderNode(node.id, parentElement, nodesMap)
 
-        // Select and focus the new node
+        // Start editing immediately
         if (newNodeElement) {
             const titleElement = newNodeElement.querySelector('.ts-title')
             this.selectNode(node.id)
 
-            // Make the title editable and focus it
-            titleElement.contentEditable = true
-            titleElement.focus()
-
-            // Select all text
-            const range = document.createRange()
-            range.selectNodeContents(titleElement)
-            const selection = window.getSelection()
-            selection.removeAllRanges()
-            selection.addRange(range)
+            // Make editable and focus
+            setTimeout(() => {
+                this.startEditing(titleElement)
+            }, 10)
         }
 
-        // Set up event listeners for the new node
+        // Initialize drag and drop for new nodes
         this.initDragAndDrop()
+
+        // Add contextual add buttons
+        this.addContextualAddButtons()
     }
 
     /**
-     * Handle node updated event
-     * @param {Object} data - Event data with updated node information
+     * Handles a node being updated
+     * @param {Object} data - The update data
      */
     handleNodeUpdated(data) {
         const { nodeId, properties } = data
 
-        // Find the node element
+        // Find entry
         const nodeEntry = document.getElementById(nodeId)
         if (!nodeEntry) return
 
@@ -735,22 +910,104 @@ export class TrestleView {
             const titleElement = nodeEntry.querySelector('.ts-title')
             titleElement.textContent = properties.title
         }
-
-        // Update other properties as needed
     }
 
     /**
-     * Handle node deleted event
-     * @param {Object} data - Event data with deleted node ID
+     * Handles a node being deleted
+     * @param {Object} data - The delete data
      */
     handleNodeDeleted(data) {
         const { nodeId } = data
 
-        // Find and remove the node element
+        // Find node
         const nodeLi = this.nodeElements.get(nodeId)
         if (nodeLi) {
+            // Check if this is the last item in a list
+            const parent = nodeLi.parentElement
+            const isLastInList = parent.children.length === 1
+
+            // Remove the node
             nodeLi.remove()
             this.nodeElements.delete(nodeId)
+
+            // If it was the last item and the parent is the root, show empty state
+            if (isLastInList && parent.classList.contains('ts-root')) {
+                this.showEmptyState(parent)
+            }
         }
+    }
+
+    /**
+     * Handles a node being indented
+     * @param {Object} data - The indent data
+     */
+    handleNodeIndented(data) {
+        const { nodeId, newParentId } = data
+
+        // Find nodes
+        const nodeLi = this.nodeElements.get(nodeId)
+        const newParentLi = this.nodeElements.get(newParentId)
+
+        if (!nodeLi || !newParentLi) return
+
+        // Get or create child list for new parent
+        let parentUl = newParentLi.querySelector('ul')
+        if (!parentUl) {
+            parentUl = document.createElement('ul')
+            newParentLi.appendChild(parentUl)
+            newParentLi.classList.remove('ts-closed')
+            newParentLi.classList.add('ts-open')
+        }
+
+        // Move the node to the end of the new parent's children
+        parentUl.appendChild(nodeLi)
+
+        // Reinitialize drag and drop
+        this.initDragAndDrop()
+
+        // Add contextual add buttons
+        this.addContextualAddButtons()
+    }
+
+    /**
+     * Handles a node being outdented
+     * @param {Object} data - The outdent data
+     */
+    handleNodeOutdented(data) {
+        const { nodeId, newParentId } = data
+
+        // Find nodes
+        const nodeLi = this.nodeElements.get(nodeId)
+        if (!nodeLi) return
+
+        const oldParentLi = nodeLi.parentElement.closest('li')
+        if (!oldParentLi) return
+
+        // Find new parent list
+        let newParentList
+        if (newParentId === 'trestle-root') {
+            newParentList = this.rootElement.querySelector('ul')
+        } else {
+            const newParentLi = this.nodeElements.get(newParentId)
+            if (!newParentLi) return
+
+            // Get parent's parent list
+            newParentList = newParentLi.parentElement
+        }
+
+        if (!newParentList) return
+
+        // Insert after the old parent
+        if (oldParentLi.nextElementSibling) {
+            newParentList.insertBefore(nodeLi, oldParentLi.nextElementSibling)
+        } else {
+            newParentList.appendChild(nodeLi)
+        }
+
+        // Reinitialize drag and drop
+        this.initDragAndDrop()
+
+        // Add contextual add buttons
+        this.addContextualAddButtons()
     }
 }

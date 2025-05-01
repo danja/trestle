@@ -1,62 +1,75 @@
+// webpack.config.js
 import path from 'path'
 import { fileURLToPath } from 'url'
 import CopyWebpackPlugin from 'copy-webpack-plugin'
 import HtmlWebpackPlugin from 'html-webpack-plugin'
 
-// Get the directory name of the current module
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default {
-    entry: './src/js/main.js', // Entry point remains the same
+    entry: './src/js/main.js',
     resolve: {
         extensions: ['.js', '.json'],
         alias: {
-            '@': path.resolve(__dirname, 'src') // Alias '@' points to the src directory
+            '@': path.resolve(__dirname, 'src')
         }
     },
     output: {
-        filename: '[name].bundle.js', // Added .bundle for clarity
-        path: path.resolve(__dirname, 'dist/public'), // Output directly to dist/public
-        publicPath: '/', // Serve assets from the root
-        clean: true, // Clean the output directory before build
+        filename: '[name].bundle.js',
+        path: path.resolve(__dirname, 'dist/public'),
+        publicPath: '/',
+        clean: true,
+    },
+    module: {
+        rules: [
+            {
+                test: /\.js$/,
+                exclude: /node_modules/,
+                use: {
+                    loader: 'babel-loader',
+                    options: {
+                        presets: [
+                            ['@babel/preset-env', {
+                                targets: {
+                                    browsers: ['last 2 versions', 'not dead']
+                                }
+                            }]
+                        ]
+                    }
+                }
+            },
+            {
+                test: /\.css$/,
+                use: ['style-loader', 'css-loader']
+            }
+        ]
     },
     devServer: {
         static: {
-            directory: path.resolve(__dirname, 'dist/public') // Serve static files from dist/public
+            directory: path.resolve(__dirname, 'dist/public')
         },
         port: 9090,
         open: true,
-        // History API fallback might be needed for single-page applications
-        // historyApiFallback: true, 
+        hot: true
     },
     plugins: [
         new HtmlWebpackPlugin({
-            template: path.resolve(__dirname, 'src/html/index.html'), // Path to your template
-            filename: 'index.html', // Output filename
-            inject: 'body' // Inject scripts into the body
+            template: path.resolve(__dirname, 'src/html/index.html'),
+            filename: 'index.html',
+            inject: 'body'
         }),
         new CopyWebpackPlugin({
             patterns: [
-                // HTML copying is now handled by HtmlWebpackPlugin
-                // {
-                //     // Copy HTML files from src/html to dist/public
-                //     from: path.resolve(__dirname, 'src/html'),
-                //     to: path.resolve(__dirname, 'dist/public'),
-                //     globOptions: {
-                //         ignore: ['**/.*'], // Example: ignore dotfiles
-                //     },
-                // },
                 {
-                    // Copy CSS files from src/css to dist/public/css
                     from: path.resolve(__dirname, 'src/css'),
                     to: path.resolve(__dirname, 'dist/public/css'),
                     globOptions: {
-                        ignore: ['**/.*'], // Example: ignore dotfiles
+                        ignore: ['**/.*'],
                     },
                 }
             ]
         })
     ],
-    mode: 'development', // Set mode (development or production)
-    devtool: 'inline-source-map', // Add source maps for easier debugging
+    mode: 'development',
+    devtool: 'inline-source-map',
 }

@@ -4,46 +4,43 @@ import { Config } from '../config.js'
 import rdf from 'rdf-ext'
 
 /**
- * Extension of TrestleModel that uses RDF-Ext for data representation
+ * Extended Trestle model with RDF capabilities
  */
 class TrestleRDFModel extends TrestleModel {
     /**
      * Creates a new TrestleRDFModel instance
-     * @param {string} endpoint - SPARQL endpoint URL
-     * @param {string} baseUri - Base URI for RDF resources
-     * @param {EventBus} eventBus - Event bus for communication
+     * @param {string} endpoint - The SPARQL endpoint URL
+     * @param {string} baseUri - The base URI for the model
+     * @param {EventBus} eventBus - The event bus for communication
      */
     constructor(endpoint, baseUri, eventBus) {
         // Call parent constructor
         super(endpoint, baseUri, eventBus)
 
-        // Create empty RDF dataset
+        // Initialize RDF dataset
         this.rdfDataset = rdf.dataset()
     }
 
     /**
-     * Initialize the model by loading data or creating an empty structure
-     * Overrides parent method to add RDF functionality
+     * Initialize the model
      */
     async initialize() {
         try {
-            // Call parent implementation
+            // Initialize base model
             await super.initialize()
 
-            // Build RDF dataset from loaded nodes
+            // Build RDF dataset
             this.buildRDFDataset()
         } catch (error) {
             console.error('Error in RDF initialization:', error)
-            // Parent already handles errors
         }
     }
 
     /**
-     * Create an empty model structure with just a root node
-     * Overrides parent method to add RDF representation
+     * Create an empty model structure
      */
     createEmptyModel() {
-        // Call parent implementation first
+        // Create empty model in base class
         super.createEmptyModel()
 
         // Build RDF dataset
@@ -51,10 +48,10 @@ class TrestleRDFModel extends TrestleModel {
     }
 
     /**
-     * Build RDF dataset from the current nodes
+     * Build RDF dataset from node data
      */
     buildRDFDataset() {
-        // Clear existing dataset
+        // Create fresh dataset
         this.rdfDataset = rdf.dataset()
 
         // Add all nodes to dataset
@@ -64,95 +61,90 @@ class TrestleRDFModel extends TrestleModel {
     }
 
     /**
-     * Add a node and its properties directly to the main RDF dataset
-     * @param {Object} node - Node object
+     * Add a node to the RDF dataset
+     * @param {Object} node - The node to add
      */
     addNodeToRDF(node) {
-        console.log(`addNodeToRDF(node) = ${node}`)
         if (!node) return
 
-        // Define namespaces needed
+        // Set up namespaces
         const ns = {
             rdf: rdf.namespace(Config.PREFIXES.rdf || 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'),
             dc: rdf.namespace(Config.PREFIXES.dc),
             ts: rdf.namespace(Config.PREFIXES.ts),
-            xsd: rdf.namespace(Config.PREFIXES.xsd || 'http://www.w3.org/2001/XMLSchema#') // Add xsd namespace
+            xsd: rdf.namespace(Config.PREFIXES.xsd || 'http://www.w3.org/2001/XMLSchema#')
         }
         const subject = rdf.namedNode(`${this.baseUri}${node.id}`)
 
-        // Helper to add quads directly to this.rdfDataset
+        // Helper function to add quads
         const add = (p, o) => {
-            if (o !== undefined && o !== null) { // Only add if object exists
+            if (o !== undefined && o !== null) {
                 this.rdfDataset.add(rdf.quad(subject, p, o))
-                console.log(`quad = ${rdf.quad(subject, p, o)}`)
-                console.log(`this.rdfDataset = ${JSON.stringify(this.rdfDataset)}`)
             }
         }
 
-        // Add type (ts:Node or ts:RootNode)
+        // Add type
         add(ns.rdf('type'), ns.ts(node.type))
 
-        // Add title (dc:title)
+        // Add title
         if (node.title !== undefined) {
             add(ns.dc('title'), rdf.literal(node.title))
         }
 
-        // Add creation date (dc:created) - Use node.created if available
+        // Add created date
         if (node.created) {
-            add(ns.dc('created'), rdf.literal(node.created, ns.xsd('dateTime'))) // Assume xsd in Config or add default
+            add(ns.dc('created'), rdf.literal(node.created, ns.xsd('dateTime')))
         } else {
-            // Fallback if TrestleModel didn't set it (should not happen ideally)
+            // Default created date
             add(ns.dc('created'), rdf.literal(new Date().toISOString(), ns.xsd('dateTime')))
         }
 
-        // Add description (ts:description) - Use ts: namespace
+        // Add description
         if (node.description !== undefined) {
             add(ns.ts('description'), rdf.literal(node.description))
         }
 
-        // Add parent (ts:parent) - Use ts: namespace
-        if (node.parent !== undefined && node.parent !== null) { // Check for null parent (root)
+        // Add parent
+        if (node.parent !== undefined && node.parent !== null) {
             add(ns.ts('parent'), rdf.namedNode(`${this.baseUri}${node.parent}`))
         }
 
-        // Add index (ts:index) - Use ts: namespace
+        // Add index
         if (node.index !== undefined) {
-            add(ns.ts('index'), rdf.literal(node.index.toString())) // Ensure literal
+            add(ns.ts('index'), rdf.literal(node.index.toString()))
         }
     }
 
     /**
      * Add a new node
-     * Overrides parent method to add RDF representation
-     * @param {string} parentId - Parent node ID
-     * @param {string} title - Node title
-     * @param {number} index - Position in parent's children
-     * @returns {Object} The created node
+     * @param {string} parentId - The parent node ID
+     * @param {string} title - The node title
+     * @param {number} index - The index in parent's children
+     * @returns {Object} The new node
      */
     addNode(parentId, title, index) {
-        // Use parent implementation to create node
+        // Add node in base class
         const newNode = super.addNode(parentId, title, index)
 
-        // Add RDF representation
+        // Add to RDF dataset
         this.addNodeToRDF(newNode)
 
         return newNode
     }
 
     /**
-     * Update node properties
-     * Overrides parent method to update RDF representation
-     * @param {string} nodeId - Node ID
-     * @param {Object} properties - Properties to update
+     * Update a node's properties
+     * @param {string} nodeId - The node ID to update
+     * @param {Object} properties - The properties to update
      */
     updateNode(nodeId, properties) {
-        // Use parent implementation to update node
+        // Update in base class
         super.updateNode(nodeId, properties)
 
-        // Update RDF representation
+        // Update in RDF dataset
         const node = this.getNode(nodeId)
         if (node) {
-            // Remove existing quads for this node (original simple approach)
+            // Remove existing quads
             const quadsToRemove = this.rdfDataset.match(rdf.namedNode(`${this.baseUri}${nodeId}`))
             for (const quad of quadsToRemove) {
                 this.rdfDataset.delete(quad)
@@ -164,25 +156,28 @@ class TrestleRDFModel extends TrestleModel {
     }
 
     /**
-     * Update node description
-     * Overrides parent method to update RDF representation
-     * @param {string} nodeId - Node ID
-     * @param {string} description - New description
+     * Update a node's description
+     * @param {string} nodeId - The node ID to update
+     * @param {string} description - The new description
      */
     updateNodeDescription(nodeId, description) {
-        // Use parent implementation
+        // Update in base class
         super.updateNodeDescription(nodeId, description)
 
-        // Update RDF representation
+        // Update in RDF dataset
         const node = this.getNode(nodeId)
         if (node) {
-            // Remove existing description triples
-            const descQuads = this.rdfDataset.match(rdf.namedNode(`${this.baseUri}${nodeId}`), rdf.namespace(Config.PREFIXES.dc)('description'))
+            // Remove existing description quads
+            const descQuads = this.rdfDataset.match(
+                rdf.namedNode(`${this.baseUri}${nodeId}`),
+                rdf.namespace(Config.PREFIXES.dc)('description')
+            )
+
             for (const quad of descQuads) {
                 this.rdfDataset.delete(quad)
             }
 
-            // Add new description
+            // Add new description if provided
             if (description) {
                 this.rdfDataset.add(rdf.quad(
                     rdf.namedNode(`${this.baseUri}${nodeId}`),
@@ -194,28 +189,27 @@ class TrestleRDFModel extends TrestleModel {
     }
 
     /**
-     * Delete a node and all its children recursively
-     * Overrides parent method to update RDF representation
-     * @param {string} nodeId - Node ID to delete
+     * Delete a node and its children
+     * @param {string} nodeId - The node ID to delete
      */
     deleteNode(nodeId) {
-        // Get the node and all its descendants BEFORE deleting from the parent model
+        // Get all descendant IDs
         const allNodesToDelete = this.getAllDescendantIds(nodeId)
-        allNodesToDelete.push(nodeId) // Include the node itself
+        allNodesToDelete.push(nodeId)
 
-        // Use parent implementation to delete node and children from the in-memory model
+        // Delete in base class
         super.deleteNode(nodeId)
 
-        // Remove all identified nodes from RDF dataset
+        // Delete from RDF dataset
         for (const idToDelete of allNodesToDelete) {
             this.removeNodeFromRDF(idToDelete)
         }
     }
 
     /**
-     * Helper function to get all descendant IDs of a node
-     * @param {string} nodeId - The ID of the node
-     * @returns {string[]} - An array of descendant node IDs
+     * Get all descendant IDs of a node
+     * @param {string} nodeId - The node ID
+     * @returns {Array} The descendant IDs
      */
     getAllDescendantIds(nodeId) {
         const node = this.getNode(nodeId)
@@ -226,63 +220,61 @@ class TrestleRDFModel extends TrestleModel {
         let descendantIds = []
         for (const childId of node.children) {
             descendantIds.push(childId)
-            // Recursively get descendants of the child
             descendantIds = descendantIds.concat(this.getAllDescendantIds(childId))
         }
         return descendantIds
     }
 
     /**
-     * Remove a node from the RDF dataset, including triples referencing it
-     * @param {string} nodeId - Node ID to remove
+     * Remove a node from the RDF dataset
+     * @param {string} nodeId - The node ID to remove
      */
     removeNodeFromRDF(nodeId) {
         const subject = rdf.namedNode(`${this.baseUri}${nodeId}`)
 
-        // Collect quads to remove first to avoid modifying dataset while iterating
+        // Find all quads to remove
         const quadsToRemove = []
 
-        // Find quads where the node is the subject
+        // Quads where node is subject
         for (const quad of this.rdfDataset.match(subject)) {
             quadsToRemove.push(quad)
         }
 
-        // Find quads where the node is the object
+        // Quads where node is object
         for (const quad of this.rdfDataset.match(null, null, subject)) {
             quadsToRemove.push(quad)
         }
 
-        // Now delete the collected quads
+        // Delete quads
         for (const quad of quadsToRemove) {
             this.rdfDataset.delete(quad)
         }
     }
 
     /**
-     * Move a node to a new parent or position
-     * Overrides parent method to update RDF representation
-     * @param {string} nodeId - Node to move
-     * @param {string} newParentId - New parent node ID
-     * @param {number} newIndex - Position in new parent's children
+     * Move a node to a new parent
+     * @param {string} nodeId - The node ID to move
+     * @param {string} newParentId - The new parent ID
+     * @param {number} newIndex - The new index in parent's children
      */
     moveNode(nodeId, newParentId, newIndex) {
-        // Use parent implementation to move node
+        // Move in base class
         super.moveNode(nodeId, newParentId, newIndex)
 
-        // Update RDF representation for the moved node
+        // Update in RDF dataset
         const node = this.getNode(nodeId)
         if (node) {
-            // Remove and recreate node's RDF representation
+            // Remove existing quads
             this.removeNodeFromRDF(nodeId)
             this.addNodeToRDF(node)
         }
 
-        // Also update the order of other nodes that might have changed indices
+        // Update children of new parent
         const newParent = this.getNode(newParentId)
         if (newParent && newParent.children) {
             for (const childId of newParent.children) {
                 const child = this.getNode(childId)
-                if (child) { // Check if child exists (might have been the moved node)
+                if (child) {
                     this.removeNodeFromRDF(childId)
                     this.addNodeToRDF(child)
                 }
@@ -291,21 +283,21 @@ class TrestleRDFModel extends TrestleModel {
     }
 
     /**
-     * Convert model to Turtle format
-     * Uses RDF dataset instead of manual string construction
-     * @returns {string} Turtle representation
+     * Convert the model to Turtle format
+     * @returns {string} The Turtle representation
      */
     toTurtle() {
-        // Fallback to parent (or implement RDF-Ext serialization later)
+        // Use base class implementation
         return super.toTurtle()
     }
 
     /**
-     * Export the RDF dataset
-     * @returns {Dataset} RDF dataset
+     * Get the RDF dataset
+     * @returns {Dataset} The RDF dataset
      */
     getRDFDataset() {
         return this.rdfDataset
     }
 }
+
 export default TrestleRDFModel

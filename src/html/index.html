@@ -12,8 +12,7 @@
 <body>
     <header id="header-outer">
         <div id="header">Trestle</div>
-        
-        <!-- Desktop Navigation -->
+
         <div class="top-navbar">
             <div class="toolbar">
                 <ul>
@@ -23,18 +22,16 @@
                 </ul>
             </div>
         </div>
-        
-        <!-- Mobile Hamburger Menu -->
+
         <button class="hamburger-menu" aria-label="Menu" id="hamburgerButton">☰</button>
     </header>
 
-    <!-- Mobile Menu -->
     <div id="menu-box" class="hidden">
         <div class="toolbar">
             <ul>
-                <li><button id="saveButton">Save</button></li>
-                <li><button id="addButton">Add Root Item</button></li>
-                <li><button id="shortcutsButton">Shortcuts</button></li>
+                <li><button id="mobileaaveButton">Save</button></li>
+                <li><button id="mobileAddButton">Add Root Item</button></li>
+                <li><button id="mobileShortcutsButton">Shortcuts</button></li>
             </ul>
         </div>
     </div>
@@ -42,12 +39,13 @@
     <div id="shortcuts-text" class="text-box hidden">
         <h3>Keyboard Shortcuts</h3>
         <ul>
-            <li><strong>Enter</strong>: Insert new item</li>
-            <li><strong>Tab</strong>: Indent</li>
-            <li><strong>Shift+Tab</strong>: Outdent</li>
-            <li><strong>Up/Down</strong>: Navigate</li>
-            <li><strong>Click</strong> on item to select</li>
-            <li><strong>Double-click</strong> to edit</li>
+            <li><strong>Enter</strong> New item</li>
+            <li><strong>Shift+Enter</strong> Line break</li>
+            <li><strong>Tab</strong> Indent</li>
+            <li><strong>Shift+Tab</strong> Outdent</li>
+            <li><strong>Up/Down</strong> Navigate</li>
+            <li><strong>Ctrl+↑/↓</strong> Move item</li>
+            <li><strong>Alt+Click</strong> Edit details</li>
         </ul>
     </div>
 
@@ -72,12 +70,12 @@
     <template id="entry-template">
         <div class="ts-entry">
             <button class="ts-expander" aria-label="Toggle expand"></button>
-            <div class="ts-handle" aria-hidden="true">⊤</div>
+            <div class="ts-handle" aria-hidden="true">⋮</div>
             <div class="ts-title" contenteditable="true"></div>
             <div class="ts-actions">
-                <button class="ts-card" aria-label="Show card">📄</button>
-                <button class="ts-addChild" aria-label="Add child">➕</button>
-                <button class="ts-delete" aria-label="Delete">❌</button>
+                <button class="ts-card" aria-label="Show card" title="Show details">📝</button>
+                <button class="ts-addChild" aria-label="Add child" title="Add child item">+</button>
+                <button class="ts-delete" aria-label="Delete" title="Delete item">×</button>
             </div>
             <span class="date hidden"></span>
         </div>

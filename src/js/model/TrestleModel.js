@@ -1,14 +1,13 @@
-/**
- * TrestleModel - Manages the data structure and SPARQL persistence
- */
+// src/js/model/TrestleModel.js
 import { Config } from '../config.js'
 import { generateID, generateDate } from '../utils/utils.js'
 
 export class TrestleModel {
     /**
-     * @param {string} endpoint - SPARQL endpoint URL
-     * @param {string} baseUri - Base URI for RDF data
-     * @param {EventBus} eventBus - Event bus for component communication
+     * Creates a new TrestleModel instance
+     * @param {string} endpoint - The SPARQL endpoint URL
+     * @param {string} baseUri - The base URI for the model
+     * @param {EventBus} eventBus - The event bus for communication
      */
     constructor(endpoint, baseUri, eventBus) {
         this.endpoint = endpoint
@@ -17,14 +16,14 @@ export class TrestleModel {
         this.rootId = null
         this.nodes = new Map()
 
-        // Register event handlers
+        // Set up event handlers
         this.eventBus.on('node:updated', this.handleNodeUpdate.bind(this))
         this.eventBus.on('node:moved', this.handleNodeMove.bind(this))
         this.eventBus.on('node:deleted', this.handleNodeDelete.bind(this))
     }
 
     /**
-     * Initialize the model and load data
+     * Initialize the model
      */
     async initialize() {
         try {
@@ -32,13 +31,12 @@ export class TrestleModel {
             this.eventBus.emit('model:loaded', { nodes: Array.from(this.nodes.values()) })
         } catch (error) {
             console.error('Failed to initialize model:', error)
-            // Create a new empty model if none exists
             this.createEmptyModel()
         }
     }
 
     /**
-     * Creates a new, empty data model
+     * Create an empty model structure
      */
     createEmptyModel() {
         const rootId = this.generateNodeId('root')
@@ -59,20 +57,21 @@ export class TrestleModel {
 
     /**
      * Generate a unique node ID
-     * @param {string} prefix - Optional prefix for the ID
-     * @returns {string} - The generated ID
+     * @param {string} prefix - The ID prefix
+     * @returns {string} The generated ID
      */
     generateNodeId(prefix = 'nid') {
         return `${prefix}-${generateID()}`
     }
 
     /**
-     * Loads trestle data from SPARQL endpoint
+     * Load data from the SPARQL endpoint
+     * @returns {Promise<boolean>} Success indicator
      */
     async loadData() {
         try {
             const fURL = `${this.endpoint}?query=${encodeURIComponent(this.buildLoadQuery())}`
-            //    console.log(`fURL = ${decodeURI(fURL)}`)
+
             const response = await fetch(fURL, {
                 method: 'GET',
                 headers: {
@@ -85,7 +84,7 @@ export class TrestleModel {
             }
 
             const data = await response.json()
-            //    console.log(`data = ${JSON.stringify(data)}`)
+
             this.processLoadedData(data)
 
             return true
@@ -96,7 +95,8 @@ export class TrestleModel {
     }
 
     /**
-     * Build SPARQL query to load all data
+     * Build the SPARQL query for loading data
+     * @returns {string} The SPARQL query
      */
     buildLoadQuery() {
         return `
@@ -115,18 +115,18 @@ export class TrestleModel {
     }
 
     /**
-     * Process data loaded from SPARQL endpoint
-     * @param {Object} data - JSON data from SPARQL endpoint
+     * Process the loaded data from SPARQL
+     * @param {Object} data - The loaded data
      */
     processLoadedData(data) {
-        // Reset current data
+        // Clear existing data
         this.nodes.clear()
         this.rootId = null
 
-        // Process all nodes
+        // Create a map of nodes
         const nodesMap = new Map()
 
-        // First pass: create all nodes
+        // Process all nodes
         for (const binding of data.results.bindings) {
             const nodeUri = binding.node.value
             const nodeId = this.extractLocalId(nodeUri)
@@ -152,7 +152,7 @@ export class TrestleModel {
                 node.parent = this.extractLocalId(binding.parent.value)
             }
 
-            // Check if root node
+            // Mark root node
             if (type === 'RootNode') {
                 this.rootId = nodeId
             }
@@ -160,7 +160,7 @@ export class TrestleModel {
             nodesMap.set(nodeId, node)
         }
 
-        // Second pass: build parent-child relationships
+        // Build parent-child relationships
         for (const [id, node] of nodesMap.entries()) {
             if (node.parent) {
                 const parentNode = nodesMap.get(node.parent)
@@ -184,14 +184,14 @@ export class TrestleModel {
             }
         }
 
-        // Set the nodes in our model
+        // Store nodes
         this.nodes = nodesMap
     }
 
     /**
-     * Extract local ID from full URI
-     * @param {string} uri - Full URI
-     * @returns {string} - Local ID portion
+     * Extract the local ID from a URI
+     * @param {string} uri - The URI
+     * @returns {string} The local ID
      */
     extractLocalId(uri) {
         const parts = uri.split('/')
@@ -199,9 +199,9 @@ export class TrestleModel {
     }
 
     /**
-     * Extract local type from full URI
-     * @param {string} uri - Full URI
-     * @returns {string} - Local type portion
+     * Extract the local type from a URI
+     * @param {string} uri - The URI
+     * @returns {string} The local type
      */
     extractLocalType(uri) {
         const parts = uri.split('/')
@@ -209,11 +209,11 @@ export class TrestleModel {
     }
 
     /**
-     * Add a new node to the model
-     * @param {string} parentId - Parent node ID
-     * @param {string} title - Node title
-     * @param {number} index - Position in parent's children
-     * @returns {Object} - New node object
+     * Add a new node
+     * @param {string} parentId - The parent node ID
+     * @param {string} title - The node title
+     * @param {number} index - The index in parent's children
+     * @returns {Object} The new node
      */
     addNode(parentId, title, index) {
         const nodeId = this.generateNodeId()
@@ -222,7 +222,6 @@ export class TrestleModel {
         const newNode = {
             id: nodeId,
             type: 'Node',
-            // danny      title: title || 'New Item',
             title: title || '',
             created: now,
             parent: parentId,
@@ -242,11 +241,8 @@ export class TrestleModel {
 
             if (typeof index === 'number') {
                 parentNode.children.splice(index, 0, nodeId)
-
-                // Update indices for siblings
                 this.updateChildIndices(parentNode)
             } else {
-                // Add to end
                 newNode.index = parentNode.children.length
                 parentNode.children.push(nodeId)
             }
@@ -256,8 +252,8 @@ export class TrestleModel {
     }
 
     /**
-     * Update indices for all children of a node
-     * @param {Object} parentNode - Parent node
+     * Update child indices after changes
+     * @param {Object} parentNode - The parent node
      */
     updateChildIndices(parentNode) {
         if (parentNode.children) {
@@ -271,10 +267,10 @@ export class TrestleModel {
     }
 
     /**
-     * Move a node to a new parent or position
-     * @param {string} nodeId - ID of node to move
-     * @param {string} newParentId - ID of new parent
-     * @param {number} newIndex - New position in parent's children
+     * Move a node to a new parent
+     * @param {string} nodeId - The node ID to move
+     * @param {string} newParentId - The new parent ID
+     * @param {number} newIndex - The new index in parent's children
      */
     moveNode(nodeId, newParentId, newIndex) {
         const node = this.nodes.get(nodeId)
@@ -306,33 +302,32 @@ export class TrestleModel {
                 newIndex = newParent.children.length - 1
             }
 
-            // Update node parent and index
+            // Update node
             node.parent = newParentId
             node.index = newIndex
 
-            // Update indices for new siblings
+            // Update all indices
             this.updateChildIndices(newParent)
         }
     }
 
     /**
      * Delete a node and its children
-     * @param {string} nodeId - ID of node to delete
+     * @param {string} nodeId - The node ID to delete
      */
     deleteNode(nodeId) {
         const node = this.nodes.get(nodeId)
         if (!node) return
 
-        // First recursively delete all children
+        // Delete children recursively
         if (node.children && node.children.length > 0) {
-            // Create a copy to avoid modifying during iteration
             const childrenToDelete = [...node.children]
             for (const childId of childrenToDelete) {
                 this.deleteNode(childId)
             }
         }
 
-        // Remove from parent's children array
+        // Remove from parent
         const parentId = node.parent
         if (parentId) {
             const parent = this.nodes.get(parentId)
@@ -345,14 +340,14 @@ export class TrestleModel {
             }
         }
 
-        // Remove from nodes map
+        // Delete node
         this.nodes.delete(nodeId)
     }
 
     /**
      * Update a node's properties
-     * @param {string} nodeId - ID of node to update
-     * @param {Object} properties - Properties to update
+     * @param {string} nodeId - The node ID to update
+     * @param {Object} properties - The properties to update
      */
     updateNode(nodeId, properties) {
         const node = this.nodes.get(nodeId)
@@ -363,9 +358,9 @@ export class TrestleModel {
     }
 
     /**
-     * Update a node's description (stored in markdown)
-     * @param {string} nodeId - ID of node to update
-     * @param {string} description - Markdown description
+     * Update a node's description
+     * @param {string} nodeId - The node ID to update
+     * @param {string} description - The new description
      */
     updateNodeDescription(nodeId, description) {
         const node = this.nodes.get(nodeId)
@@ -376,8 +371,8 @@ export class TrestleModel {
 
     /**
      * Get a node by ID
-     * @param {string} nodeId - Node ID
-     * @returns {Object|undefined} - Node object or undefined
+     * @param {string} nodeId - The node ID
+     * @returns {Object} The node
      */
     getNode(nodeId) {
         return this.nodes.get(nodeId)
@@ -385,7 +380,7 @@ export class TrestleModel {
 
     /**
      * Get all nodes
-     * @returns {Array} - Array of node objects
+     * @returns {Array} The nodes
      */
     getAllNodes() {
         return Array.from(this.nodes.values())
@@ -393,15 +388,15 @@ export class TrestleModel {
 
     /**
      * Get the root node
-     * @returns {Object|undefined} - Root node or undefined
+     * @returns {Object} The root node
      */
     getRootNode() {
         return this.nodes.get(this.rootId)
     }
 
     /**
-     * Convert model to Turtle format for saving
-     * @returns {string} - Turtle representation of the model
+     * Convert the model to Turtle format
+     * @returns {string} The Turtle representation
      */
     toTurtle() {
         let turtle = `@prefix dc: <${Config.PREFIXES.dc}> .\n`
@@ -415,18 +410,18 @@ export class TrestleModel {
 
         // Add all other nodes
         for (const [id, node] of this.nodes.entries()) {
-            // Skip root node, already added
+            // Skip root
             if (id === this.rootId) continue
 
             if (node.type === 'Node') {
                 turtle += `<${this.baseUri}${node.id}> a ts:Node;\n`
 
-                // Add title if present
+                // Add title
                 if (node.title) {
                     turtle += `   dc:title "${this.escapeTurtle(node.title)}" ;\n`
                 }
 
-                // Add created date if present
+                // Add created date
                 if (node.created) {
                     turtle += `   dc:created "${node.created}" ;\n`
                 }
@@ -438,11 +433,11 @@ export class TrestleModel {
                 if (node.parent) {
                     turtle += `   ts:parent <${this.baseUri}${node.parent}> .\n`
                 } else {
-                    // Fallback to root if no parent
+                    // Default to root
                     turtle += `   ts:parent <${this.baseUri}${this.rootId}> .\n`
                 }
 
-                // Add description if present (as a separate triple)
+                // Add description as separate triple
                 if (node.description) {
                     turtle += `<${this.baseUri}${node.id}> dc:description """${this.escapeTurtle(node.description)}""" .\n`
                 }
@@ -454,8 +449,8 @@ export class TrestleModel {
 
     /**
      * Escape special characters for Turtle format
-     * @param {string} text - Text to escape
-     * @returns {string} - Escaped text
+     * @param {string} text - The text to escape
+     * @returns {string} The escaped text
      */
     escapeTurtle(text) {
         if (!text) return ''
@@ -468,8 +463,8 @@ export class TrestleModel {
     }
 
     /**
-     * Save the current model to the SPARQL endpoint
-     * @returns {Promise<boolean>} - True if save successful
+     * Save the model to the SPARQL endpoint
+     * @returns {Promise<boolean>} Success indicator
      */
     async saveData() {
         try {
@@ -495,11 +490,9 @@ export class TrestleModel {
         }
     }
 
-    // Event handlers
-
     /**
-     * Handle node update event
-     * @param {Object} data - Event data
+     * Handle node update events
+     * @param {Object} data - The update data
      */
     handleNodeUpdate(data) {
         const { nodeId, properties } = data
@@ -507,8 +500,8 @@ export class TrestleModel {
     }
 
     /**
-     * Handle node move event
-     * @param {Object} data - Event data
+     * Handle node move events
+     * @param {Object} data - The move data
      */
     handleNodeMove(data) {
         const { nodeId, newParentId, newIndex } = data
@@ -516,8 +509,8 @@ export class TrestleModel {
     }
 
     /**
-     * Handle node delete event
-     * @param {Object} data - Event data
+     * Handle node delete events
+     * @param {Object} data - The delete data
      */
     handleNodeDelete(data) {
         const { nodeId } = data
