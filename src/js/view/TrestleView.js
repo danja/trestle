@@ -369,8 +369,21 @@ export class TrestleView {
                 const newTitle = event.target.textContent.trim()
                 this.eventBus.emit('view:updateNode', { nodeId, properties: { title: newTitle } })
 
-                // Add a new sibling item
-                this.eventBus.emit('view:addSibling', { nodeId })
+                const nodeLi = this.nodeElements.get(nodeId)
+                if (nodeLi) {
+                    // Check if this is the first node
+                    const isFirstNode =
+                        nodeLi.parentElement.classList.contains('ts-root') &&
+                        !nodeLi.previousElementSibling
+
+                    if (isFirstNode) {
+                        // Add a child to the first node
+                        this.eventBus.emit('view:addChild', { parentId: nodeId })
+                    } else {
+                        // Add a sibling for all other nodes
+                        this.eventBus.emit('view:addSibling', { nodeId })
+                    }
+                }
                 break
 
             case 'Tab':
