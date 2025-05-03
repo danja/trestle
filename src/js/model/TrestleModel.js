@@ -42,17 +42,28 @@ export class TrestleModel {
         const rootId = this.generateNodeId('root')
         this.rootId = rootId
 
+        console.log('Creating empty model with rootId:', rootId)
+
         // Create root node
         this.nodes.set(rootId, {
             id: rootId,
-            type: 'RootNode',
+            type: 'RootNode', // Ensure the root node has the correct type
+            title: 'Root Node',
+            created: generateDate(),
             children: []
+        })
+
+        console.log('Emitting model:created with root node type:', this.nodes.get(this.rootId).type)
+
+        console.log('Emitting model:created with data:', {
+            rootId: this.rootId,
+            nodes: Array.from(this.nodes.values())
         })
 
         this.eventBus.emit('model:created', {
             rootId: this.rootId,
             nodes: Array.from(this.nodes.values())
-        })
+        }) // Emit the correct root node and nodes
     }
 
     /**
@@ -518,5 +529,21 @@ export class TrestleModel {
     handleNodeDelete(data) {
         const { nodeId } = data
         this.deleteNode(nodeId)
+    }
+
+    /**
+     * Load the outline from localStorage
+     * @returns {Object|null} The loaded outline or null if not found
+     */
+    loadOutline() {
+        try {
+            const savedData = localStorage.getItem('trestle-outline')
+            if (savedData) {
+                return JSON.parse(savedData)
+            }
+        } catch (error) {
+            console.error('Failed to load outline:', error)
+        }
+        return null
     }
 }

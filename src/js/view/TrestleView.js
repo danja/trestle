@@ -21,13 +21,21 @@ export class TrestleView {
     }
 
     renderTree(data) {
+        console.log('Rendering tree with data:', data) // Debugging output
         this.rootElement.innerHTML = ''
         this.nodeElements.clear()
 
-        const rootNode = data.nodes.find(node => node.type === 'RootNode')
+        let rootNode = data.nodes.find(node => node.type === 'RootNode')
+        console.log('Root node:', rootNode) // Debugging log for root node
         if (!rootNode) {
-            console.error('No root node found')
-            return
+            console.error('No root node found. Data received:', data)
+            const fallbackRootNode = data.nodes[0]
+            if (fallbackRootNode) {
+                console.warn('Falling back to first node as root:', fallbackRootNode)
+                rootNode = fallbackRootNode
+            } else {
+                return
+            }
         }
 
         const tree = this.buildTreeStructure(data.nodes, rootNode.id)
@@ -47,23 +55,9 @@ export class TrestleView {
         this.addContextualAddButtons()
 
         if (!(tree.children && tree.children.length)) {
-            this.showEmptyState(rootUl)
+            console.warn('No children found for root node. Rendering root node only.')
+            this.renderNode(rootNode.id, rootUl, tree.nodes)
         }
-    }
-
-    showEmptyState(rootUl) {
-        const emptyLi = document.createElement('li')
-        emptyLi.className = 'ts-empty-state'
-
-        const emptyText = document.createElement('div')
-        emptyText.className = 'ts-empty-text'
-        emptyText.textContent = 'Click here to add your first item'
-        emptyText.addEventListener('click', () => {
-            this.eventBus.emit('view:addChild', { parentId: 'trestle-root' })
-        })
-
-        emptyLi.appendChild(emptyText)
-        rootUl.appendChild(emptyLi)
     }
 
     buildTreeStructure(nodes, rootId) {
@@ -264,58 +258,58 @@ export class TrestleView {
     }
 
     handleKeyDown(event) {
-        if (!event.target.isContentEditable) return;
+        if (!event.target.isContentEditable) return
 
-        const entry = event.target.closest('.ts-entry');
-        if (!entry) return;
+        const entry = event.target.closest('.ts-entry')
+        if (!entry) return
 
-        const nodeId = entry.id;
-        const nodeLi = this.nodeElements.get(nodeId);
-        if (!nodeLi) return;
+        const nodeId = entry.id
+        const nodeLi = this.nodeElements.get(nodeId)
+        if (!nodeLi) return
 
         switch (event.key) {
             case 'Tab':
-                event.preventDefault();
+                event.preventDefault()
                 if (event.shiftKey) {
                     // Outdent logic
-                    const parentLi = nodeLi.parentElement.closest('li');
-                    if (!parentLi) return; // Already at the top level
+                    const parentLi = nodeLi.parentElement.closest('li')
+                    if (!parentLi) return // Already at the top level
 
-                    const grandParentUl = parentLi.parentElement;
-                    if (!grandParentUl) return;
+                    const grandParentUl = parentLi.parentElement
+                    if (!grandParentUl) return
 
-                    const newParentId = grandParentUl.closest('li')?.dataset.nodeId || 'trestle-root';
+                    const newParentId = grandParentUl.closest('li')?.dataset.nodeId || 'trestle-root'
 
-                    grandParentUl.insertBefore(nodeLi, parentLi.nextElementSibling);
+                    grandParentUl.insertBefore(nodeLi, parentLi.nextElementSibling)
 
                     this.eventBus.emit('view:moveNode', {
                         nodeId,
                         newParentId,
                         newIndex: Array.from(grandParentUl.children).indexOf(nodeLi)
-                    });
+                    })
                 } else {
                     // Indent logic
-                    const prevLi = nodeLi.previousElementSibling;
-                    if (!prevLi) return; // No previous sibling to indent under
+                    const prevLi = nodeLi.previousElementSibling
+                    if (!prevLi) return // No previous sibling to indent under
 
-                    const newParentId = prevLi.dataset.nodeId;
-                    let childUl = prevLi.querySelector('ul');
+                    const newParentId = prevLi.dataset.nodeId
+                    let childUl = prevLi.querySelector('ul')
                     if (!childUl) {
-                        childUl = document.createElement('ul');
-                        prevLi.appendChild(childUl);
-                        prevLi.classList.remove('ts-closed');
-                        prevLi.classList.add('ts-open');
+                        childUl = document.createElement('ul')
+                        prevLi.appendChild(childUl)
+                        prevLi.classList.remove('ts-closed')
+                        prevLi.classList.add('ts-open')
                     }
 
-                    childUl.appendChild(nodeLi);
+                    childUl.appendChild(nodeLi)
 
                     this.eventBus.emit('view:moveNode', {
                         nodeId,
                         newParentId,
                         newIndex: Array.from(childUl.children).indexOf(nodeLi)
-                    });
+                    })
                 }
-                break;
+                break
 
             case 'Enter':
                 if (event.shiftKey) {
@@ -645,74 +639,83 @@ export class TrestleView {
     }
 
     handleDrop(event) {
-        event.preventDefault();
-        event.stopPropagation();
+        event.preventDefault()
+        event.stopPropagation()
 
-        let dropzone = event.target;
+        let dropzone = event.target
         while (dropzone && !dropzone.classList.contains('dropzone')) {
-            dropzone = dropzone.parentElement;
+            dropzone = dropzone.parentElement
         }
 
-        if (!dropzone) return;
+        if (!dropzone) return
 
-        dropzone.classList.remove('active');
+        dropzone.classList.remove('active')
 
         if (!this.draggedNodeId) {
-            console.log('No dragged node ID');
-            return;
+            console.log('No dragged node ID')
+            return
         }
 
-        const draggedLi = this.nodeElements.get(this.draggedNodeId);
+        const draggedLi = this.nodeElements.get(this.draggedNodeId)
         if (!draggedLi) {
-            console.log('Dragged node element not found');
-            return;
+            console.log('Dragged node element not found')
+            return
         }
 
-        const targetLi = dropzone.closest('li');
+        const targetLi = dropzone.closest('li')
         if (!targetLi) {
-            console.log('Target list item not found');
-            return;
+            console.log('Target list item not found')
+            return
         }
 
         if (draggedLi.contains(targetLi)) {
-            console.warn('Cannot drop onto a child element');
-            return;
+            console.warn('Cannot drop onto a child element')
+            return
         }
 
-        const dropPosition = event.offsetY / targetLi.offsetHeight;
-        const newParentId = dropPosition > 0.5 ? targetLi.dataset.nodeId : targetLi.parentElement.closest('li')?.dataset.nodeId || 'trestle-root';
-
-        if (newParentId === targetLi.dataset.nodeId) {
-            let childUl = targetLi.querySelector('ul');
+        const dropPosition = event.offsetX / targetLi.offsetWidth
+        if (dropPosition > 0.5) {
+            // Indent logic
+            const newParentId = targetLi.dataset.nodeId
+            let childUl = targetLi.querySelector('ul')
             if (!childUl) {
-                childUl = document.createElement('ul');
-                targetLi.appendChild(childUl);
-                targetLi.classList.remove('ts-closed');
-                targetLi.classList.add('ts-open');
+                childUl = document.createElement('ul')
+                targetLi.appendChild(childUl)
+                targetLi.classList.remove('ts-closed')
+                targetLi.classList.add('ts-open')
             }
 
-            childUl.appendChild(draggedLi);
+            childUl.appendChild(draggedLi)
+
+            this.eventBus.emit('view:moveNode', {
+                nodeId: this.draggedNodeId,
+                newParentId,
+                newIndex: Array.from(childUl.children).indexOf(draggedLi)
+            })
         } else {
-            const parentUl = targetLi.parentElement;
-            parentUl.insertBefore(draggedLi, dropPosition > 0.5 ? targetLi.nextElementSibling : targetLi);
+            // Outdent logic
+            const parentUl = targetLi.parentElement
+            parentUl.insertBefore(draggedLi, targetLi)
+
+            const newParentId = parentUl.closest('li')?.dataset.nodeId || 'trestle-root'
+
+            this.eventBus.emit('view:moveNode', {
+                nodeId: this.draggedNodeId,
+                newParentId,
+                newIndex: Array.from(parentUl.children).indexOf(draggedLi)
+            })
         }
 
-        this.eventBus.emit('view:moveNode', {
-            nodeId: this.draggedNodeId,
-            newParentId,
-            newIndex: Array.from(draggedLi.parentElement.children).indexOf(draggedLi)
-        });
-
-        this.draggedNodeId = null;
-        draggedLi.classList.remove('ts-dragging');
+        this.draggedNodeId = null
+        draggedLi.classList.remove('ts-dragging')
 
         document.querySelectorAll('.ts-highlight').forEach(el => {
-            el.classList.remove('ts-highlight');
-        });
+            el.classList.remove('ts-highlight')
+        })
 
-        this.initDragAndDrop();
+        this.initDragAndDrop()
 
-        this.addContextualAddButtons();
+        this.addContextualAddButtons()
     }
 
     selectNode(nodeId) {

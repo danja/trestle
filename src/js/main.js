@@ -7,19 +7,28 @@ import { Config } from './config.js'
 import { EventBus } from 'evb'
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM fully loaded and parsed')
+
     // Initialize the event bus
     const eventBus = new EventBus()
+    console.log('EventBus initialized')
 
     // Initialize the model, view, and controller
     const model = new TrestleRDFModel(Config.SPARQL_ENDPOINT, Config.BASE_URI, eventBus)
+    console.log('TrestleModel initialized')
+
     const view = new TrestleView(document.getElementById('trestle-root'), eventBus)
+    console.log('TrestleView initialized')
+
     const controller = new TrestleController(model, view, eventBus)
+    console.log('TrestleController initialized')
 
     // Set up UI event listeners
     setupUIListeners(controller)
 
     // Initialize the application
     controller.initialize()
+    console.log('Controller initialization complete')
 
     // Set up auto-save if enabled
     if (Config.AUTO_SAVE) {
@@ -35,7 +44,7 @@ function setupUIListeners(controller) {
     // Button elements
     const saveButton = document.getElementById('saveButton')
     const mobileaaveButton = document.getElementById('mobileaaveButton')
-    const addButton = document.getElementById('addButton')
+    const clearAllButton = document.getElementById('addButton')
     const mobileAddButton = document.getElementById('mobileAddButton')
     const shortcutsButton = document.getElementById('shortcutsButton')
     const mobileShortcutsButton = document.getElementById('mobileShortcutsButton')
@@ -56,11 +65,16 @@ function setupUIListeners(controller) {
         })
     }
 
-    // Add root item buttons
-    if (addButton) {
-        addButton.addEventListener('click', () => controller.addRootItem())
+    // Clear All button
+    if (clearAllButton) {
+        clearAllButton.textContent = 'Clear All'
+        clearAllButton.addEventListener('click', () => {
+            controller.model.createEmptyModel() // Clear all and create a new outline
+            controller.view.renderTree({ nodes: Array.from(controller.model.nodes.values()) }) // Refresh the view
+        })
     }
 
+    // Add root item buttons
     if (mobileAddButton) {
         mobileAddButton.addEventListener('click', () => {
             controller.addRootItem()

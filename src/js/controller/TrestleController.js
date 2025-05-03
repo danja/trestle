@@ -19,7 +19,19 @@ export class TrestleController {
      * Initialize the controller
      */
     initialize() {
-        this.model.initialize()
+        const savedOutline = this.model.loadOutline()
+
+        if (savedOutline) {
+            this.eventBus.emit('model:loaded', savedOutline)
+        } else {
+            const rootNode = this.model.addNode(null, 'Root Node', 0)
+            this.eventBus.emit('model:created', {
+                nodes: [rootNode]
+            })
+            this.view.renderTree({ nodes: [rootNode] })
+        }
+
+        this.view.renderTree({ nodes: Array.from(this.model.nodes.values()) }) // Explicitly refresh the view
     }
 
     /**
