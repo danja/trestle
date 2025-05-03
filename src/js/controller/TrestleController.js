@@ -206,7 +206,8 @@ export class TrestleController {
 
         this.model.moveNode(nodeId, newParentId, newIndex)
 
-        // No need to emit an event as the model and view are already updated
+        // Emit event for node move
+        this.eventBus.emit('node:moved', { nodeId, newParentId, newIndex })
     }
 
     /**

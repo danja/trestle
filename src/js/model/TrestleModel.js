@@ -309,6 +309,9 @@ export class TrestleModel {
             // Update all indices
             this.updateChildIndices(newParent)
         }
+
+        // Emit event for node move
+        this.eventBus.emit('node:moved', { nodeId, newParentId, newIndex })
     }
 
     /**

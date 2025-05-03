@@ -264,12 +264,59 @@ export class TrestleView {
     }
 
     handleKeyDown(event) {
-        if (!event.target.isContentEditable) return
+        if (!event.target.isContentEditable) return;
 
-        const entry = event.target.closest('.ts-entry')
-        if (!entry) return
+        const entry = event.target.closest('.ts-entry');
+        if (!entry) return;
+
+        const nodeId = entry.id;
+        const nodeLi = this.nodeElements.get(nodeId);
+        if (!nodeLi) return;
 
         switch (event.key) {
+            case 'Tab':
+                event.preventDefault();
+                if (event.shiftKey) {
+                    // Outdent logic
+                    const parentLi = nodeLi.parentElement.closest('li');
+                    if (!parentLi) return; // Already at the top level
+
+                    const grandParentUl = parentLi.parentElement;
+                    if (!grandParentUl) return;
+
+                    const newParentId = grandParentUl.closest('li')?.dataset.nodeId || 'trestle-root';
+
+                    grandParentUl.insertBefore(nodeLi, parentLi.nextElementSibling);
+
+                    this.eventBus.emit('view:moveNode', {
+                        nodeId,
+                        newParentId,
+                        newIndex: Array.from(grandParentUl.children).indexOf(nodeLi)
+                    });
+                } else {
+                    // Indent logic
+                    const prevLi = nodeLi.previousElementSibling;
+                    if (!prevLi) return; // No previous sibling to indent under
+
+                    const newParentId = prevLi.dataset.nodeId;
+                    let childUl = prevLi.querySelector('ul');
+                    if (!childUl) {
+                        childUl = document.createElement('ul');
+                        prevLi.appendChild(childUl);
+                        prevLi.classList.remove('ts-closed');
+                        prevLi.classList.add('ts-open');
+                    }
+
+                    childUl.appendChild(nodeLi);
+
+                    this.eventBus.emit('view:moveNode', {
+                        nodeId,
+                        newParentId,
+                        newIndex: Array.from(childUl.children).indexOf(nodeLi)
+                    });
+                }
+                break;
+
             case 'Enter':
                 if (event.shiftKey) {
                     return
@@ -279,30 +326,17 @@ export class TrestleView {
                 event.target.contentEditable = false
                 this.editingId = null
 
-                const nodeId = entry.id
                 const newTitle = event.target.textContent.trim()
                 this.eventBus.emit('view:updateNode', { nodeId, properties: { title: newTitle } })
 
-                const nodeLi = this.nodeElements.get(nodeId)
-                if (nodeLi) {
-                    const isFirstNode =
-                        nodeLi.parentElement.classList.contains('ts-root') &&
-                        !nodeLi.previousElementSibling
+                const isFirstNode =
+                    nodeLi.parentElement.classList.contains('ts-root') &&
+                    !nodeLi.previousElementSibling
 
-                    if (isFirstNode) {
-                        this.eventBus.emit('view:addChild', { parentId: nodeId })
-                    } else {
-                        this.eventBus.emit('view:addSibling', { nodeId })
-                    }
-                }
-                break
-
-            case 'Tab':
-                event.preventDefault()
-                if (event.shiftKey) {
-                    this.eventBus.emit('view:outdentNode', { nodeId: entry.id })
+                if (isFirstNode) {
+                    this.eventBus.emit('view:addChild', { parentId: nodeId })
                 } else {
-                    this.eventBus.emit('view:indentNode', { nodeId: entry.id })
+                    this.eventBus.emit('view:addSibling', { nodeId })
                 }
                 break
 
@@ -310,26 +344,26 @@ export class TrestleView {
                 event.preventDefault()
                 event.target.contentEditable = false
                 this.editingId = null
-                this.selectNode(entry.id)
+                this.selectNode(nodeId)
                 break
 
             case 'ArrowUp':
                 if (event.ctrlKey) {
                     event.preventDefault()
-                    this.moveNodeUp(entry.id)
+                    this.moveNodeUp(nodeId)
                 } else {
                     event.preventDefault()
-                    this.navigateUp(entry.id)
+                    this.navigateUp(nodeId)
                 }
                 break
 
             case 'ArrowDown':
                 if (event.ctrlKey) {
                     event.preventDefault()
-                    this.moveNodeDown(entry.id)
+                    this.moveNodeDown(nodeId)
                 } else {
                     event.preventDefault()
-                    this.navigateDown(entry.id)
+                    this.navigateDown(nodeId)
                 }
                 break
         }
@@ -611,104 +645,74 @@ export class TrestleView {
     }
 
     handleDrop(event) {
-        event.preventDefault()
-        event.stopPropagation()
+        event.preventDefault();
+        event.stopPropagation();
 
-        let dropzone = event.target
+        let dropzone = event.target;
         while (dropzone && !dropzone.classList.contains('dropzone')) {
-            dropzone = dropzone.parentElement
+            dropzone = dropzone.parentElement;
         }
 
-        if (!dropzone) return
+        if (!dropzone) return;
 
-        dropzone.classList.remove('active')
+        dropzone.classList.remove('active');
 
         if (!this.draggedNodeId) {
-            console.log('No dragged node ID')
-            return
+            console.log('No dragged node ID');
+            return;
         }
 
-        const draggedLi = this.nodeElements.get(this.draggedNodeId)
+        const draggedLi = this.nodeElements.get(this.draggedNodeId);
         if (!draggedLi) {
-            console.log('Dragged node element not found')
-            return
+            console.log('Dragged node element not found');
+            return;
         }
 
-        const targetLi = dropzone.closest('li')
+        const targetLi = dropzone.closest('li');
         if (!targetLi) {
-            console.log('Target list item not found')
-            return
-        }
-
-        const targetEntry = targetLi.querySelector('.ts-entry')
-        if (!targetEntry) {
-            console.log('Target entry not found')
-            return
+            console.log('Target list item not found');
+            return;
         }
 
         if (draggedLi.contains(targetLi)) {
-            console.warn('Cannot drop onto a child element')
-            return
+            console.warn('Cannot drop onto a child element');
+            return;
         }
 
-        const parentUl = targetLi.parentElement
+        const dropPosition = event.offsetY / targetLi.offsetHeight;
+        const newParentId = dropPosition > 0.5 ? targetLi.dataset.nodeId : targetLi.parentElement.closest('li')?.dataset.nodeId || 'trestle-root';
 
-        const dropzones = Array.from(targetLi.querySelectorAll('.dropzone'))
-        const isDropAfter = dropzones.indexOf(dropzone) === 0
-
-        console.log('Drop position:', isDropAfter ? 'before' : 'as child')
-
-        let newParentId
-        let newIndex
-
-        if (isDropAfter) {
-            const parentNode = parentUl.closest('li')
-            newParentId = parentNode ? parentNode.dataset.nodeId : 'trestle-root'
-
-            const siblings = Array.from(parentUl.children)
-            newIndex = siblings.indexOf(targetLi)
-
-            console.log('Drop as sibling - Parent:', newParentId, 'Index:', newIndex)
-        } else {
-            newParentId = targetLi.dataset.nodeId
-
-            let childUl = targetLi.querySelector('ul')
+        if (newParentId === targetLi.dataset.nodeId) {
+            let childUl = targetLi.querySelector('ul');
             if (!childUl) {
-                childUl = document.createElement('ul')
-                targetLi.appendChild(childUl)
-                targetLi.classList.remove('ts-closed')
-                targetLi.classList.add('ts-open')
+                childUl = document.createElement('ul');
+                targetLi.appendChild(childUl);
+                targetLi.classList.remove('ts-closed');
+                targetLi.classList.add('ts-open');
             }
 
-            newIndex = childUl.children.length
-
-            console.log('Drop as child - Parent:', newParentId, 'Index:', newIndex)
+            childUl.appendChild(draggedLi);
+        } else {
+            const parentUl = targetLi.parentElement;
+            parentUl.insertBefore(draggedLi, dropPosition > 0.5 ? targetLi.nextElementSibling : targetLi);
         }
 
-        console.log('Moving node:', this.draggedNodeId, 'to parent:', newParentId, 'at index:', newIndex)
         this.eventBus.emit('view:moveNode', {
             nodeId: this.draggedNodeId,
-            newParentId: newParentId,
-            newIndex: newIndex
-        })
+            newParentId,
+            newIndex: Array.from(draggedLi.parentElement.children).indexOf(draggedLi)
+        });
 
-        if (isDropAfter) {
-            parentUl.insertBefore(draggedLi, targetLi)
-        } else {
-            const childUl = targetLi.querySelector('ul')
-            childUl.appendChild(draggedLi)
-        }
-
-        this.draggedNodeId = null
-        draggedLi.classList.remove('ts-dragging')
+        this.draggedNodeId = null;
+        draggedLi.classList.remove('ts-dragging');
 
         document.querySelectorAll('.ts-highlight').forEach(el => {
-            el.classList.remove('ts-highlight')
-        })
+            el.classList.remove('ts-highlight');
+        });
 
-        this.initDragAndDrop()
+        this.initDragAndDrop();
 
-        this.addContextualAddButtons()
+        this.addContextualAddButtons();
     }
 
     selectNode(nodeId) {
