@@ -1,95 +1,3 @@
-    // Zoom in to a node (show only its subtree, update breadcrumb)
-    zoomInToNode(nodeId) {
-        if (!nodeId || !this.allNodes[nodeId]) return;
-        // Remove all children from rootElement
-        this.rootElement.innerHTML = '';
-        this.nodeElements.clear();
-        // Render only the subtree for nodeId
-        const tree = this.buildTreeStructure(Object.values(this.allNodes), nodeId);
-        const rootUl = document.createElement('ul');
-        rootUl.className = 'ts-root';
-        this.rootElement.appendChild(rootUl);
-        for (const childId of tree.children || []) {
-            const childData = tree.nodes.get(childId);
-            if (childData) {
-                const treeNode = new TreeNode(childData, tree.nodes, this.eventBus, this.template);
-                const childElement = treeNode.render(rootUl);
-                if (childElement) {
-                    this.nodeElements.set(childId, childElement);
-                }
-            }
-        }
-        this.currentZoomNodeId = nodeId;
-        this.updateBreadcrumb();
-    }
-
-    // Zoom out to a node (from breadcrumb click)
-    zoomOutToNode(nodeId) {
-        if (nodeId === null || nodeId === '') {
-            // Go to root
-            this.eventBus.emit('model:loaded', { nodes: Object.values(this.allNodes) });
-        } else {
-            this.zoomInToNode(nodeId);
-        }
-    }
-
-    // Update the breadcrumb UI
-    updateBreadcrumb() {
-        if (!this.breadcrumbNav) return;
-        // Clear
-        this.breadcrumbNav.innerHTML = '';
-        // Build path from root to currentZoomNodeId
-        let path = [];
-        let nodeId = this.currentZoomNodeId;
-        while (nodeId && this.allNodes[nodeId]) {
-            path.unshift(this.allNodes[nodeId]);
-            nodeId = this.allNodes[nodeId].parent || null;
-        }
-        // Always start with root
-        const rootNode = Object.values(this.allNodes).find(n => n.type === 'RootNode');
-        if (rootNode) {
-            this.breadcrumbNav.appendChild(this._makeBreadcrumbLink(rootNode, null));
-        }
-        // Add separator and links for each node in path
-        path.forEach((node, idx) => {
-            this.breadcrumbNav.appendChild(this._makeBreadcrumbSeparator());
-            if (idx === path.length - 1) {
-                // Current node
-                const span = document.createElement('span');
-                span.className = 'breadcrumb-current';
-                span.textContent = node.title || '(untitled)';
-                this.breadcrumbNav.appendChild(span);
-            } else {
-                this.breadcrumbNav.appendChild(this._makeBreadcrumbLink(node, node.id));
-            }
-        });
-    }
-
-    _makeBreadcrumbLink(node, nodeId) {
-        const a = document.createElement('a');
-        a.href = '#';
-        a.className = 'breadcrumb-link';
-        a.textContent = node.title || '(untitled)';
-        a.dataset.nodeId = nodeId || '';
-        return a;
-    }
-
-    _makeBreadcrumbSeparator() {
-        const sep = document.createElement('span');
-        sep.className = 'breadcrumb-separator';
-        sep.textContent = '>';
-        return sep;
-    }
-
-    // Handle click on breadcrumb
-    handleBreadcrumbClick(event) {
-        if (event.target.classList.contains('breadcrumb-link')) {
-            event.preventDefault();
-            const nodeId = event.target.dataset.nodeId || null;
-            this.zoomOutToNode(nodeId);
-        }
-    }
-// src/js/view/TrestleView.js
 import { TreeNode } from './components/TreeNode.js';
 import { DragDropHandler } from './components/DragDropHandler.js';
 import { CardDetail } from './components/CardDetail.js';
@@ -98,7 +6,7 @@ import { ExpanderButton } from './components/ExpanderButton.js';
 import { InlineEditor } from './components/InlineEditor.js';
 import { NodeSelector } from './components/NodeSelector.js';
 
-export class TrestleView {
+export default class TrestleView {
     constructor(rootElement, eventBus) {
         this.rootElement = rootElement;
         this.eventBus = eventBus;
@@ -510,14 +418,10 @@ export class TrestleView {
         container.appendChild(emptyState);
     }
 
-    // --- Breadcrumb and Zoom Functionality ---
-    // Zoom in to a node (show only its subtree, update breadcrumb)
-    zoomInToNode = (nodeId) => {
+    zoomInToNode(nodeId) {
         if (!nodeId || !this.allNodes[nodeId]) return;
-        // Remove all children from rootElement
         this.rootElement.innerHTML = '';
         this.nodeElements.clear();
-        // Render only the subtree for nodeId
         const tree = this.buildTreeStructure(Object.values(this.allNodes), nodeId);
         const rootUl = document.createElement('ul');
         rootUl.className = 'ts-root';
@@ -534,40 +438,32 @@ export class TrestleView {
         }
         this.currentZoomNodeId = nodeId;
         this.updateBreadcrumb();
-    };
+    }
 
-    // Zoom out to a node (from breadcrumb click)
-    zoomOutToNode = (nodeId) => {
+    zoomOutToNode(nodeId) {
         if (nodeId === null || nodeId === '') {
-            // Go to root
             this.eventBus.emit('model:loaded', { nodes: Object.values(this.allNodes) });
         } else {
             this.zoomInToNode(nodeId);
         }
-    };
+    }
 
-    // Update the breadcrumb UI
-    updateBreadcrumb = () => {
+    updateBreadcrumb() {
         if (!this.breadcrumbNav) return;
-        // Clear
         this.breadcrumbNav.innerHTML = '';
-        // Build path from root to currentZoomNodeId
         let path = [];
         let nodeId = this.currentZoomNodeId;
         while (nodeId && this.allNodes[nodeId]) {
             path.unshift(this.allNodes[nodeId]);
             nodeId = this.allNodes[nodeId].parent || null;
         }
-        // Always start with root
         const rootNode = Object.values(this.allNodes).find(n => n.type === 'RootNode');
         if (rootNode) {
             this.breadcrumbNav.appendChild(this._makeBreadcrumbLink(rootNode, null));
         }
-        // Add separator and links for each node in path
         path.forEach((node, idx) => {
             this.breadcrumbNav.appendChild(this._makeBreadcrumbSeparator());
             if (idx === path.length - 1) {
-                // Current node
                 const span = document.createElement('span');
                 span.className = 'breadcrumb-current';
                 span.textContent = node.title || '(untitled)';
@@ -576,30 +472,29 @@ export class TrestleView {
                 this.breadcrumbNav.appendChild(this._makeBreadcrumbLink(node, node.id));
             }
         });
-    };
+    }
 
-    _makeBreadcrumbLink = (node, nodeId) => {
+    _makeBreadcrumbLink(node, nodeId) {
         const a = document.createElement('a');
         a.href = '#';
         a.className = 'breadcrumb-link';
         a.textContent = node.title || '(untitled)';
         a.dataset.nodeId = nodeId || '';
         return a;
-    };
+    }
 
-    _makeBreadcrumbSeparator = () => {
+    _makeBreadcrumbSeparator() {
         const sep = document.createElement('span');
         sep.className = 'breadcrumb-separator';
         sep.textContent = '>';
         return sep;
-    };
+    }
 
-    // Handle click on breadcrumb
-    handleBreadcrumbClick = (event) => {
+    handleBreadcrumbClick(event) {
         if (event.target.classList.contains('breadcrumb-link')) {
             event.preventDefault();
             const nodeId = event.target.dataset.nodeId || null;
             this.zoomOutToNode(nodeId);
         }
-    };
+    }
 }

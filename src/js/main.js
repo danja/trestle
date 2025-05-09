@@ -1,7 +1,7 @@
 // src/js/main.js
 import { TrestleModel } from './model/TrestleModel.js'
 import TrestleRDFModel from './model/TrestleRDFModel.js'
-import { TrestleView } from './view/TrestleView.js'
+import TrestleView from './view/index.js'
 import { TrestleController } from './controller/TrestleController.js'
 import { Config } from './config.js'
 import { EventBus } from 'evb'
