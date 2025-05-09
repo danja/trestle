@@ -205,12 +205,25 @@ export class DragDropHandler {
 
         if (!dropzone) return;
 
+        // Debug log for dragover
+        const targetLi = dropzone.closest('li');
+        let dropPosition = null;
+        if (targetLi) {
+            dropPosition = event.offsetX / targetLi.offsetWidth;
+        }
+        console.log('[DragDropHandler] DragOver:', {
+            draggedNodeId: this.draggedNodeId,
+            dropzone,
+            targetLi: targetLi ? targetLi.dataset.nodeId : null,
+            dropPosition,
+            offsetX: event.offsetX,
+            offsetWidth: targetLi ? targetLi.offsetWidth : null
+        });
+
         dropzone.classList.add('active');
         dropzone.classList.remove('ts-drop-indent', 'ts-drop-outdent');
 
-        const targetLi = dropzone.closest('li');
         if (targetLi) {
-            const dropPosition = event.offsetX / targetLi.offsetWidth;
             if (dropPosition > 0.5) {
                 dropzone.classList.add('ts-drop-indent');
             } else {
@@ -295,27 +308,62 @@ export class DragDropHandler {
             return;
         }
 
+        // Special case: Dropping onto itself on the right (indent) should indent under previous sibling
+        const dropPosition = event.offsetX / targetLi.offsetWidth;
+        if (draggedLi === targetLi && dropPosition > 0.1) {
+            const prevSibling = draggedLi.previousElementSibling;
+            if (prevSibling) {
+                let childUl = prevSibling.querySelector('ul');
+                if (!childUl) {
+                    childUl = document.createElement('ul');
+                    prevSibling.appendChild(childUl);
+                    prevSibling.classList.remove('ts-closed');
+                    prevSibling.classList.add('ts-open');
+                }
+                childUl.appendChild(draggedLi);
+                this.eventBus.emit('view:moveNode', {
+                    nodeId: this.draggedNodeId,
+                    newParentId: prevSibling.dataset.nodeId,
+                    newIndex: Array.from(childUl.children).indexOf(draggedLi)
+                });
+                this.draggedNodeId = null;
+                draggedLi.classList.remove('ts-dragging');
+                document.querySelectorAll('.ts-highlight').forEach(el => {
+                    el.classList.remove('ts-highlight');
+                });
+                this.initialize();
+            } else {
+                console.warn('No previous sibling to indent under');
+            }
+            return;
+        }
+
+        if (draggedLi === targetLi) {
+            console.warn('Cannot drop onto itself');
+            return;
+        }
+
         if (draggedLi.contains(targetLi)) {
             console.warn('Cannot drop onto a child element');
             return;
         }
 
-        // Debug logging
-        console.log('Drop event:', {
-            offsetX: event.offsetX,
-            offsetWidth: targetLi.offsetWidth,
-            dropPosition: event.offsetX / targetLi.offsetWidth,
-            draggedNodeId: this.draggedNodeId,
-            targetNodeId: targetLi.dataset.nodeId
-        });
+        // Prevent self-indent: do not allow dropping a node onto itself
+        if (draggedLi === targetLi) {
+            console.warn('Cannot indent a node under itself');
+            return;
+        }
 
-        const dropPosition = event.offsetX / targetLi.offsetWidth;
-        // Only allow indent if dropping on the previous sibling of the dragged node
-        const draggedIndex = Array.from(targetLi.parentElement.children).indexOf(draggedLi);
-        const targetIndex = Array.from(targetLi.parentElement.children).indexOf(targetLi);
-        if (dropPosition > 0.5 && targetIndex === draggedIndex - 1) {
-            console.log('Indent logic triggered');
-            // Indent logic
+        // --- Updated logic: indent if dropped on rightmost 90% of any node ---
+        console.log('[DragDropHandler] Drop event:', {
+            draggedNodeId: this.draggedNodeId,
+            targetNodeId: targetLi.dataset.nodeId,
+            dropPosition,
+            offsetX: event.offsetX,
+            offsetWidth: targetLi.offsetWidth
+        });
+        if (dropPosition > 0.1) {
+            // Indent: move as last child of targetLi
             const newParentId = targetLi.dataset.nodeId;
             let childUl = targetLi.querySelector('ul');
             if (!childUl) {
@@ -332,12 +380,8 @@ export class DragDropHandler {
                 newParentId,
                 newIndex: Array.from(childUl.children).indexOf(draggedLi)
             });
-        } else if (dropPosition > 0.5) {
-            console.warn('Indent only allowed on previous sibling');
-            // Optionally, add a visual shake or feedback here
         } else {
-            console.log('Outdent logic triggered');
-            // Outdent logic
+            // Outdent or move before target
             const parentUl = targetLi.parentElement;
             parentUl.insertBefore(draggedLi, targetLi);
 
