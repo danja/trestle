@@ -296,3 +296,5 @@ export class TrestleController {
         }
     }
 }
+
+export default TrestleController;

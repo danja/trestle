@@ -101,3 +101,5 @@ export class CardDetail {
         }
     }
 }
+
+export default CardDetail;

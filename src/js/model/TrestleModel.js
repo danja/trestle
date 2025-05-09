@@ -547,3 +547,5 @@ export class TrestleModel {
         return null
     }
 }
+
+export default TrestleModel;

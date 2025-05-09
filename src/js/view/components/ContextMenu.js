@@ -123,3 +123,5 @@ export class ContextMenu {
         });
     }
 }
+
+export default ContextMenu;

@@ -1,4 +1,8 @@
 // test/components.test.js
+if (typeof window !== 'undefined' && window.HTMLElement && !window.HTMLElement.prototype.scrollIntoView) {
+  window.HTMLElement.prototype.scrollIntoView = function() {};
+}
+
 import { expect } from 'chai';
 import { JSDOM } from 'jsdom';
 import { EventBus } from 'evb';
@@ -29,8 +33,19 @@ const dom = new JSDOM(`<!DOCTYPE html>
 </body>
 </html>`);
 
+// Set scrollIntoView mock on the JSDOM window's HTMLElement prototype
+if (dom.window && dom.window.HTMLElement && !dom.window.HTMLElement.prototype.scrollIntoView) {
+  dom.window.HTMLElement.prototype.scrollIntoView = function() {};
+}
+
 global.window = dom.window;
 global.document = dom.window.document;
+
+beforeAll(() => {
+  if (!global.HTMLElement.prototype.scrollIntoView) {
+    global.HTMLElement.prototype.scrollIntoView = function() {};
+  }
+});
 
 describe('Component Tests', () => {
   let eventBus;

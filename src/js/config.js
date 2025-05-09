@@ -28,3 +28,5 @@ export const Config = {
         DOWN: 40
     }
 }
+
+export default Config;

@@ -102,3 +102,5 @@ export class ExpanderButton {
         });
     }
 }
+
+export default ExpanderButton;

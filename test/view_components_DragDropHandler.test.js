@@ -107,4 +107,111 @@ describe('DragDropHandler', () => {
       newParentId: 'n2',
     }));
   });
-}); 
+});
+
+describe('DragDropHandler', () => {
+  let root, nodeElements, eventBus, handler;
+
+  beforeEach(() => {
+    root = document.createElement('ul');
+    nodeElements = new Map();
+    eventBus = { emit: vi.fn() };
+    handler = new DragDropHandler(root, nodeElements, eventBus);
+  });
+
+  it('should initialize and clean up listeners', () => {
+    root.innerHTML = '<li><div class="ts-entry" id="n1"></div><div class="ts-handle"></div><div class="dropzone"></div></li>';
+    handler.initialize();
+    handler.cleanupListeners();
+    expect(true).toBe(true); // No errors
+  });
+
+  it('should not allow dropping onto itself (no previous sibling)', () => {
+    const li = document.createElement('li');
+    li.dataset.nodeId = 'n1';
+    li.innerHTML = '<div class="ts-entry" id="n1"></div><div class="dropzone"></div>';
+    root.appendChild(li);
+    nodeElements.set('n1', li);
+    handler.draggedNodeId = 'n1';
+    const dropzone = li.querySelector('.dropzone');
+    const event = { preventDefault: vi.fn(), stopPropagation: vi.fn(), target: dropzone, offsetX: 100, dataTransfer: {} };
+    Object.defineProperty(li, 'offsetWidth', { value: 100, configurable: true });
+    handler.handleDrop(event);
+    expect(eventBus.emit).not.toHaveBeenCalled();
+  });
+
+  it('should indent onto previous sibling when dropped onto itself on right', () => {
+    const li1 = document.createElement('li');
+    li1.dataset.nodeId = 'n1';
+    li1.innerHTML = '<div class="ts-entry" id="n1"></div><div class="dropzone"></div>';
+    const li2 = document.createElement('li');
+    li2.dataset.nodeId = 'n2';
+    li2.innerHTML = '<div class="ts-entry" id="n2"></div><div class="dropzone"></div>';
+    root.appendChild(li1);
+    root.appendChild(li2);
+    nodeElements.set('n1', li1);
+    nodeElements.set('n2', li2);
+    handler.draggedNodeId = 'n2';
+    const dropzone = li2.querySelector('.dropzone');
+    const event = { preventDefault: vi.fn(), stopPropagation: vi.fn(), target: dropzone, offsetX: 90, dataTransfer: {} };
+    Object.defineProperty(li2, 'offsetWidth', { value: 100, configurable: true });
+    handler.handleDrop(event);
+    expect(eventBus.emit).toHaveBeenCalledWith('view:moveNode', expect.objectContaining({ nodeId: 'n2', newParentId: 'n1' }));
+  });
+
+  it('should not allow dropping onto a child', () => {
+    const li1 = document.createElement('li');
+    li1.dataset.nodeId = 'n1';
+    const li2 = document.createElement('li');
+    li2.dataset.nodeId = 'n2';
+    li1.appendChild(document.createElement('ul')).appendChild(li2);
+    nodeElements.set('n1', li1);
+    nodeElements.set('n2', li2);
+    root.appendChild(li1);
+    handler.draggedNodeId = 'n1';
+    const dropzone = li2.appendChild(document.createElement('div'));
+    dropzone.className = 'dropzone';
+    const event = { preventDefault: vi.fn(), stopPropagation: vi.fn(), target: dropzone, offsetX: 10, dataTransfer: {} };
+    Object.defineProperty(li2, 'offsetWidth', { value: 100, configurable: true });
+    handler.handleDrop(event);
+    expect(eventBus.emit).not.toHaveBeenCalled();
+  });
+
+  it('should indent as last child if dropped on right of another node', () => {
+    const li1 = document.createElement('li');
+    li1.dataset.nodeId = 'n1';
+    li1.innerHTML = '<div class="ts-entry" id="n1"></div><div class="dropzone"></div>';
+    const li2 = document.createElement('li');
+    li2.dataset.nodeId = 'n2';
+    li2.innerHTML = '<div class="ts-entry" id="n2"></div><div class="dropzone"></div>';
+    root.appendChild(li1);
+    root.appendChild(li2);
+    nodeElements.set('n1', li1);
+    nodeElements.set('n2', li2);
+    handler.draggedNodeId = 'n2';
+    const dropzone = li1.querySelector('.dropzone');
+    const event = { preventDefault: vi.fn(), stopPropagation: vi.fn(), target: dropzone, offsetX: 90, dataTransfer: {} };
+    Object.defineProperty(li1, 'offsetWidth', { value: 100, configurable: true });
+    handler.handleDrop(event);
+    expect(eventBus.emit).toHaveBeenCalledWith('view:moveNode', expect.objectContaining({ nodeId: 'n2', newParentId: 'n1' }));
+  });
+
+  it('should outdent if dropped on left of another node', () => {
+    const li1 = document.createElement('li');
+    li1.dataset.nodeId = 'n1';
+    li1.innerHTML = '<div class="ts-entry" id="n1"></div><div class="dropzone"></div>';
+    const li2 = document.createElement('li');
+    li2.dataset.nodeId = 'n2';
+    li2.innerHTML = '<div class="ts-entry" id="n2"></div><div class="dropzone"></div>';
+    root.appendChild(li1);
+    root.appendChild(li2);
+    nodeElements.set('n1', li1);
+    nodeElements.set('n2', li2);
+    handler.draggedNodeId = 'n2';
+    const dropzone = li1.querySelector('.dropzone');
+    const event = { preventDefault: vi.fn(), stopPropagation: vi.fn(), target: dropzone, offsetX: 5, dataTransfer: {} };
+    Object.defineProperty(li1, 'offsetWidth', { value: 100, configurable: true });
+    handler.handleDrop(event);
+    expect(eventBus.emit).toHaveBeenCalledWith('view:moveNode', expect.objectContaining({ nodeId: 'n2', newParentId: expect.any(String) }));
+  });
+});

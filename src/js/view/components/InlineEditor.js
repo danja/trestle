@@ -266,3 +266,5 @@ export class InlineEditor {
         return this.editingId;
     }
 }
+
+export default InlineEditor;
