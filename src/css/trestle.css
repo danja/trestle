@@ -54,46 +54,123 @@ body {
     letter-spacing: 0.3px;
 }
 
-.top-navbar {
+
+/* Toolbar Layout */
+.top-navbar.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    padding: 0 16px;
+    height: 54px;
+    border-bottom: 1px solid #eee;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    position: relative;
+    z-index: 10;
+}
+
+.toolbar-left, .toolbar-right {
     display: flex;
     align-items: center;
 }
 
-.top-navbar .toolbar ul {
-    display: flex;
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
+.toolbar-left {
+    gap: 4px;
 }
 
-.top-navbar .toolbar li {
-    margin: 0 4px;
+.toolbar-right {
+    gap: 8px;
 }
 
-.top-navbar .toolbar button {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 6px 12px;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 0.9rem;
-    transition: background-color 0.2s;
-}
-
-.top-navbar .toolbar button:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-.hamburger-menu {
-    display: none;
-    cursor: pointer;
+.toolbar-icon {
     background: none;
     border: none;
-    padding: 10px;
-    color: white;
-    font-size: 1.5rem;
+    color: #444;
+    font-size: 1.3rem;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+}
+.toolbar-icon:hover {
+    background: #f5f5f5;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    margin-left: 12px;
+    font-size: 1rem;
+    color: #888;
+}
+.breadcrumb-link {
+    color: #3a7ca5;
+    text-decoration: none;
+    margin: 0 2px;
+    font-weight: 500;
+}
+.breadcrumb-link:hover {
+    text-decoration: underline;
+}
+.breadcrumb-separator {
+    margin: 0 4px;
+    color: #bbb;
+}
+.breadcrumb-current {
+    color: #444;
+    font-weight: 600;
+    margin-left: 2px;
+}
+
+/* Search Bar */
+.search-bar {
+    display: flex;
+    align-items: center;
+    background: #f5f5f5;
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-right: 8px;
+}
+.search-bar input[type="text"] {
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 1rem;
+    padding: 4px 6px 4px 0;
+    width: 120px;
+    color: #333;
+}
+.search-icon {
+    color: #888;
+    margin-right: 4px;
+    font-size: 1.1rem;
+}
+
+/* Favorites and Options */
+#favoritesButton {
+    font-size: 1.3rem;
+    color: #888;
+}
+#favoritesButton:hover {
+    color: #3a7ca5;
+}
+#optionsButton {
+    font-size: 1.3rem;
+    color: #888;
+    position: relative;
+}
+#optionsButton .vertical-line {
+    display: inline-block;
+    width: 1px;
+    height: 18px;
+    background: #ccc;
+    margin-left: 4px;
+}
+#optionsButton:hover {
+    color: #3a7ca5;
 }
 
 #menu-box {

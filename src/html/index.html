@@ -13,17 +13,29 @@
     <header id="header-outer">
         <div id="header">Trestle</div>
 
-        <div class="top-navbar">
-            <div class="toolbar">
-                <ul>
-                    <li><button id="saveButton">Save</button></li>
-                    <li><button id="addButton">Add Root Item</button></li>
-                    <li><button id="shortcutsButton">Shortcuts</button></li>
-                </ul>
+        <nav class="top-navbar toolbar">
+            <div class="toolbar-left">
+                <button class="toolbar-icon" id="hamburgerButton" aria-label="Menu">☰</button>
+                <button class="toolbar-icon" id="backButton" aria-label="Back">&#x2039;</button>
+                <button class="toolbar-icon" id="forwardButton" aria-label="Forward">&#x203A;</button>
+                <button class="toolbar-icon" id="homeButton" aria-label="Home">🏠</button>
+                <nav class="breadcrumb" aria-label="Breadcrumb">
+                    <a href="#" class="breadcrumb-link">Musa</a>
+                    <span class="breadcrumb-separator">&gt;</span>
+                    <a href="#" class="breadcrumb-link">tests</a>
+                    <span class="breadcrumb-separator">&gt;</span>
+                    <span class="breadcrumb-current">add banner</span>
+                </nav>
             </div>
-        </div>
-
-        <button class="hamburger-menu" aria-label="Menu" id="hamburgerButton">☰</button>
+            <div class="toolbar-right">
+                <div class="search-bar">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Search" aria-label="Search" />
+                </div>
+                <button class="toolbar-icon" id="favoritesButton" aria-label="Favorites">☆</button>
+                <button class="toolbar-icon" id="optionsButton" aria-label="Options">☰<span class="vertical-line"></span></button>
+            </div>
+        </nav>
     </header>
 
     <div id="menu-box" class="hidden">
