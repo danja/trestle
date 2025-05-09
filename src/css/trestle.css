@@ -444,10 +444,18 @@ body {
 }
 
 .dropzone.active {
-    background-color: rgba(33, 150, 243, 0.3);
-    height: 12px;
-    border-radius: 4px;
-    box-shadow: 0 0 0 1px rgba(33, 150, 243, 0.5) inset;
+    background: #e3f2fd;
+    border-color: #90caf9;
+}
+
+/* Visual feedback for indent/outdent during drag-and-drop */
+.ts-drop-indent {
+    background-color: #e0ffe0 !important; /* light green for indent */
+    border-left: 4px solid #4caf50 !important;
+}
+.ts-drop-outdent {
+    background-color: #ffe0e0 !important; /* light red for outdent */
+    border-right: 4px solid #f44336 !important;
 }
 
 /* Make dropzones more visible during drag */

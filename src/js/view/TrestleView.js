@@ -442,6 +442,7 @@ export default class TrestleView {
 
     zoomOutToNode(nodeId) {
         if (nodeId === null || nodeId === '') {
+            this.currentZoomNodeId = null;
             this.eventBus.emit('model:loaded', { nodes: Object.values(this.allNodes) });
         } else {
             this.zoomInToNode(nodeId);
