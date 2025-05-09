@@ -3,7 +3,7 @@
 // Assumes the app is running locally and accessible at http://localhost:3000 or similar
 // Adjust the URL as needed for your environment
 
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
 const BASE_URL = 'http://localhost:3000'; // Change if your dev server runs elsewhere
 
