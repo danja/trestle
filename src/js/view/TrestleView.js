@@ -31,6 +31,46 @@ export default class TrestleView {
 
         // Set up event listeners
         this.setupEventListeners();
+
+        // Add global keyboard handler for list management shortcuts
+        document.addEventListener('keydown', (event) => {
+            // Only trigger if not editing (no contenteditable focused)
+            if (document.activeElement && document.activeElement.isContentEditable) return;
+            if (!this.nodeSelector) return;
+            const selectedNodeId = this.nodeSelector.selectedNodeId;
+            if (!selectedNodeId) return;
+            // Shortcuts
+            if ((event.key === 'Delete' || (event.ctrlKey && event.key.toLowerCase() === 'x'))) {
+                event.preventDefault();
+                this.eventBus.emit('view:deleteNode', { nodeId: selectedNodeId });
+            } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+                event.preventDefault();
+                this.eventBus.emit('view:duplicateNode', { nodeId: selectedNodeId });
+            } else if (event.key === 'Tab') {
+                event.preventDefault();
+                if (event.shiftKey) {
+                    this.eventBus.emit('view:outdentNode', { nodeId: selectedNodeId });
+                } else {
+                    this.eventBus.emit('view:indentNode', { nodeId: selectedNodeId });
+                }
+            } else if (event.key === 'ArrowUp') {
+                if (event.ctrlKey) {
+                    event.preventDefault();
+                    this.eventBus.emit('view:moveNodeUp', { nodeId: selectedNodeId });
+                } else {
+                    event.preventDefault();
+                    this.eventBus.emit('view:navigateUp', { nodeId: selectedNodeId });
+                }
+            } else if (event.key === 'ArrowDown') {
+                if (event.ctrlKey) {
+                    event.preventDefault();
+                    this.eventBus.emit('view:moveNodeDown', { nodeId: selectedNodeId });
+                } else {
+                    event.preventDefault();
+                    this.eventBus.emit('view:navigateDown', { nodeId: selectedNodeId });
+                }
+            }
+        });
     }
 
     /**

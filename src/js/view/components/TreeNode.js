@@ -45,6 +45,18 @@ export class TreeNode {
         const dateElement = entry.querySelector('.date');
         dateElement.textContent = created || '';
 
+        // --- Add delete button event listener ---
+        const deleteButton = entry.querySelector('.ts-delete');
+        if (deleteButton) {
+            deleteButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (confirm('Are you sure you want to delete this item and all its children?')) {
+                    this.eventBus.emit('view:deleteNode', { nodeId: id });
+                }
+            });
+        }
+        // --- End delete button event listener ---
+
         // Append entry to list item
         li.appendChild(entry);
 
