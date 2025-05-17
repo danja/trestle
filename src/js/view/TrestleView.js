@@ -3,8 +3,14 @@ import { DragDropHandler } from './components/DragDropHandler.js';
 import { CardDetail } from './components/CardDetail.js';
 import { ContextMenu } from './components/ContextMenu.js';
 import { ExpanderButton } from './components/ExpanderButton.js';
+import { HamburgerMenu } from './components/HamburgerMenu.js';
 import { InlineEditor } from './components/InlineEditor.js';
+import { NavigationControls } from './components/NavigationControls.js';
+import { Breadcrumb } from './components/Breadcrumb.js';
 import { NodeSelector } from './components/NodeSelector.js';
+import { SearchBar } from './components/SearchBar.js';
+import { Favorites } from './components/Favorites.js';
+import { OptionsMenu } from './components/OptionsMenu.js';
 
 export default class TrestleView {
     constructor(rootElement, eventBus) {
@@ -12,22 +18,32 @@ export default class TrestleView {
         this.eventBus = eventBus;
         this.template = document.getElementById('entry-template');
         this.nodeElements = new Map();
+        this.allNodes = {}; // Track all nodes for navigation
         
         // Initialize component instances
         this.cardDetail = new CardDetail(eventBus);
         this.contextMenu = new ContextMenu(eventBus);
-        this.nodeSelector = null; // Will be initialized after DOM is populated
-        this.inlineEditor = null; // Will be initialized after DOM is populated
-        this.expanderButton = null; // Will be initialized after DOM is populated
-        this.dragDropHandler = null; // Will be initialized after DOM is populated
+        this.hamburgerMenu = new HamburgerMenu(document.body, eventBus);
+        this.navigationControls = new NavigationControls(document.body, eventBus);
+        
+        // Initialize toolbar components
+        const toolbarElement = document.querySelector('.top-navbar.toolbar');
+        this.searchBar = toolbarElement ? new SearchBar(toolbarElement, eventBus) : null;
+        this.favorites = toolbarElement ? new Favorites(toolbarElement, eventBus) : null;
+        this.optionsMenu = toolbarElement ? new OptionsMenu(toolbarElement, eventBus) : null;
+        
+        // Will be initialized after DOM is populated
+        this.nodeSelector = null;
+        this.inlineEditor = null;
+        this.expanderButton = null;
+        this.dragDropHandler = null;
 
-        // Breadcrumb state
+        // Initialize Breadcrumb component
+        const breadcrumbElement = document.querySelector('.breadcrumb');
+        this.breadcrumb = breadcrumbElement ? new Breadcrumb(breadcrumbElement, eventBus) : null;
         this.currentZoomNodeId = null; // null means root
-        this.breadcrumbNav = document.querySelector('.breadcrumb');
-        this.handleBreadcrumbClick = this.handleBreadcrumbClick.bind(this);
-        if (this.breadcrumbNav) {
-            this.breadcrumbNav.addEventListener('click', this.handleBreadcrumbClick);
-        }
+        this.navigationHistory = [];
+        this.historyPosition = -1;
 
         // Set up event listeners
         this.setupEventListeners();
@@ -78,7 +94,15 @@ export default class TrestleView {
      */
     setupEventListeners() {
         // Model event listeners
-        this.eventBus.on('model:loaded', this.renderTree.bind(this));
+        this.eventBus.on('model:loaded', (data) => {
+            this.allNodes = data.nodes.reduce((acc, node) => {
+                acc[node.id] = node;
+                return acc;
+            }, {});
+            this.renderTree(data);
+            this.updateBreadcrumb();
+        });
+        
         this.eventBus.on('model:created', this.renderTree.bind(this));
         this.eventBus.on('node:added', this.handleNodeAdded.bind(this));
         this.eventBus.on('node:updated', this.handleNodeUpdated.bind(this));
@@ -86,11 +110,38 @@ export default class TrestleView {
         this.eventBus.on('view:nodeIndented', this.handleNodeIndented.bind(this));
         this.eventBus.on('view:nodeOutdented', this.handleNodeOutdented.bind(this));
         
+        // Navigation events
+        this.eventBus.on('view:navigateTo', (data) => {
+            const { nodeId } = data;
+            if (nodeId === 'root' || !nodeId) {
+                this.zoomOutToNode(null);
+            } else {
+                this.zoomInToNode(nodeId);
+            }
+        });
+        
+        this.eventBus.on('view:navigateBack', () => {
+            if (this.historyPosition > 0) {
+                this.historyPosition--;
+                const prevNodeId = this.navigationHistory[this.historyPosition];
+                this.zoomInToNode(prevNodeId, false);
+            }
+        });
+        
+        this.eventBus.on('view:navigateForward', () => {
+            if (this.historyPosition < this.navigationHistory.length - 1) {
+                this.historyPosition++;
+                const nextNodeId = this.navigationHistory[this.historyPosition];
+                this.zoomInToNode(nextNodeId, false);
+            }
+        });
+        
         // View event listeners
         this.eventBus.on('view:selectNode', (data) => {
             if (this.nodeSelector) {
                 this.nodeSelector.selectNode(data.nodeId);
             }
+            this.updateBreadcrumb();
         });
         
         this.eventBus.on('view:navigateUp', (data) => {
@@ -99,54 +150,35 @@ export default class TrestleView {
             }
         });
         
-        this.eventBus.on('view:navigateDown', (data) => {
-            if (this.nodeSelector) {
-                this.nodeSelector.navigateDown(data.nodeId);
-            }
-        });
-        
-        this.eventBus.on('view:moveNodeUp', (data) => {
-            if (this.nodeSelector) {
-                this.nodeSelector.moveNodeUp(data.nodeId);
-            }
-        });
-        
-        this.eventBus.on('view:moveNodeDown', (data) => {
-            if (this.nodeSelector) {
-                this.nodeSelector.moveNodeDown(data.nodeId);
-            }
-        });
+        // Add more event listeners as needed...
     }
 
     /**
-     * Render the tree from model data
-     * @param {Object} data - The tree data from the model
+     * Renders the tree with the given nodes
+     * @param {Object} data - The data containing nodes to render
      */
     renderTree(data) {
-        console.log('Rendering tree with data:', data);
+        if (!data || !data.nodes || !Array.isArray(data.nodes)) {
+            console.error('Invalid data for renderTree:', data);
+            return;
+        }
+
         this.rootElement.innerHTML = '';
         this.nodeElements.clear();
 
-        let rootNode = data.nodes.find(node => node.type === 'RootNode');
-        console.log('Root node:', rootNode);
-        if (!rootNode) {
-            console.error('No root node found. Data received:', data);
-            const fallbackRootNode = data.nodes[0];
-            if (fallbackRootNode) {
-                console.warn('Falling back to first node as root:', fallbackRootNode);
-                rootNode = fallbackRootNode;
-            } else {
-                return;
-            }
+        if (data.nodes.length === 0) {
+            this.renderEmptyState();
+            return;
         }
-
-        const tree = this.buildTreeStructure(data.nodes, rootNode.id);
 
         const rootUl = document.createElement('ul');
         rootUl.className = 'ts-root';
         this.rootElement.appendChild(rootUl);
 
-        // Render child nodes
+        // Build the tree structure
+        const tree = this.buildTreeStructure(data.nodes, this.currentZoomNodeId);
+
+        // Render the tree
         for (const childId of tree.children || []) {
             const childData = tree.nodes.get(childId);
             if (childData) {
@@ -158,314 +190,200 @@ export default class TrestleView {
             }
         }
 
-        // Initialize components that need the DOM
-        this.nodeSelector = new NodeSelector(this.rootElement, this.nodeElements, this.eventBus);
-        this.inlineEditor = new InlineEditor(this.rootElement, this.eventBus);
-        this.expanderButton = new ExpanderButton(this.rootElement, this.eventBus);
-        this.dragDropHandler = new DragDropHandler(this.rootElement, this.nodeElements, this.eventBus);
-        this.dragDropHandler.initialize();
-
-        // Add contextual buttons
-        ContextMenu.addContextualAddButtons(this.rootElement, this.eventBus);
-
-        // Handle empty state
-        if (!(tree.children && tree.children.length)) {
-            console.warn('No children found for root node. Rendering root node only.');
-            const treeNode = new TreeNode(rootNode, tree.nodes, this.eventBus, this.template);
-            const nodeElement = treeNode.render(rootUl);
-            if (nodeElement) {
-                this.nodeElements.set(rootNode.id, nodeElement);
-            }
+        // Initialize components that need the DOM to be ready
+        if (!this.nodeSelector) {
+            this.nodeSelector = new NodeSelector(this.rootElement, this.eventBus);
         }
+        if (!this.inlineEditor) {
+            this.inlineEditor = new InlineEditor(this.rootElement, this.eventBus);
+        }
+        if (!this.expanderButton) {
+            this.expanderButton = new ExpanderButton(this.rootElement, this.eventBus);
+        }
+        if (!this.dragDropHandler) {
+            this.dragDropHandler = new DragDropHandler(this.rootElement, this.eventBus);
+        }
+
+        // Update breadcrumb after rendering
+        this.updateBreadcrumb();
     }
 
     /**
-     * Build the tree structure from flat node data
-     * @param {Array} nodes - The array of nodes
-     * @param {string} rootId - The ID of the root node
-     * @returns {Object} The tree structure object
+     * Builds a tree structure from a flat list of nodes
+     * @param {Array} nodes - The nodes to build the tree from
+     * @param {string} parentId - The ID of the parent node
+     * @returns {Object} The tree structure
      */
-    buildTreeStructure(nodes, rootId) {
-        const nodesMap = new Map();
-
-        for (const node of nodes) {
-            nodesMap.set(node.id, { ...node });
-        }
-
-        for (const node of nodesMap.values()) {
-            if (node.children) {
-                node.children = node.children.filter(childId => nodesMap.has(childId));
-            } else {
-                node.children = [];
+    buildTreeStructure(nodes, parentId = null) {
+        const nodeMap = new Map();
+        const rootNodes = [];
+        
+        // First pass: create a map of nodes
+        nodes.forEach(node => {
+            nodeMap.set(node.id, { ...node, children: [] });
+        });
+        
+        // Second pass: build the tree
+        nodes.forEach(node => {
+            const currentNode = nodeMap.get(node.id);
+            if (node.parent && nodeMap.has(node.parent)) {
+                const parentNode = nodeMap.get(node.parent);
+                parentNode.children.push(node.id);
+            } else if (node.parent === parentId || (!node.parent && !parentId)) {
+                rootNodes.push(node.id);
             }
-        }
-
+        });
+        
         return {
-            rootId,
-            nodes: nodesMap,
-            children: nodesMap.get(rootId)?.children || []
+            nodes: nodeMap,
+            children: rootNodes
         };
     }
 
     /**
-     * Handle node added event
+     * Handles when a node is added
      * @param {Object} data - The node data
      */
     handleNodeAdded(data) {
-        const { node, parentId } = data;
-
-        // Find parent element
-        let parentElement;
-        if (parentId === 'trestle-root') {
-            parentElement = this.rootElement.querySelector('ul');
-
-            // Remove empty state if present
-            const emptyState = parentElement.querySelector('.ts-empty-state');
-            if (emptyState) {
-                emptyState.remove();
-            }
-        } else {
-            const parentLi = this.nodeElements.get(parentId);
-            if (!parentLi) {
-                console.error('Parent not found:', parentId);
-                return;
-            }
-
-            // Get or create parent's child list
-            let ul = parentLi.querySelector('ul');
-            if (!ul) {
-                ul = document.createElement('ul');
-                parentLi.appendChild(ul);
-                parentLi.classList.remove('ts-closed');
-                parentLi.classList.add('ts-open');
-            }
-
-            parentElement = ul;
+        if (!data || !data.node) return;
+        
+        const { node } = data;
+        this.allNodes[node.id] = node;
+        
+        // If we're at the root or the node's parent is in the current view, update the view
+        if (!this.currentZoomNodeId || node.parent === this.currentZoomNodeId) {
+            this.renderTree({ nodes: Object.values(this.allNodes) });
         }
-
-        // Check if this is a sibling being inserted after another node
-        const insertAfterElement = this.findInsertPosition(parentElement, node.index);
-
-        // Create node map for rendering
-        const nodesMap = new Map();
-        nodesMap.set(node.id, node);
-
-        // Create the tree node
-        const treeNode = new TreeNode(node, nodesMap, this.eventBus, this.template);
-
-        // If we have a specific insertion point
-        if (insertAfterElement) {
-            // Create the node but don't attach to DOM yet
-            const tempContainer = document.createElement('div');
-            const newNodeElement = treeNode.render(tempContainer);
-
-            // Insert it after the identified element
-            insertAfterElement.after(newNodeElement);
-
-            // Update our node elements map
-            this.nodeElements.set(node.id, newNodeElement);
-
-            // Select the node
-            if (this.nodeSelector) {
-                this.nodeSelector.selectNode(node.id);
-            }
-
-            // Start editing
-            setTimeout(() => {
-                const titleElement = newNodeElement.querySelector('.ts-title');
-                if (this.inlineEditor) {
-                    this.inlineEditor.startEditing(titleElement);
-                }
-            }, 10);
-        } else {
-            // Standard rendering - append to parent
-            const newNodeElement = treeNode.render(parentElement);
-
-            if (newNodeElement) {
-                this.nodeElements.set(node.id, newNodeElement);
-
-                // Select the node
-                if (this.nodeSelector) {
-                    this.nodeSelector.selectNode(node.id);
-                }
-
-                // Start editing
-                setTimeout(() => {
-                    const titleElement = newNodeElement.querySelector('.ts-title');
-                    if (this.inlineEditor) {
-                        this.inlineEditor.startEditing(titleElement);
-                    }
-                }, 10);
-            }
-        }
-
-        // Refresh drag and drop handlers
-        if (this.dragDropHandler) {
-            this.dragDropHandler.initialize();
-        }
-
-        // Add buttons for inserting new nodes between existing ones
-        ContextMenu.addContextualAddButtons(this.rootElement, this.eventBus);
     }
 
     /**
-     * Handle node updated event
-     * @param {Object} data - The update data
+     * Handles when a node is updated
+     * @param {Object} data - The node data
      */
     handleNodeUpdated(data) {
-        const { nodeId, properties } = data;
-
-        const nodeEntry = document.getElementById(nodeId);
-        if (!nodeEntry) return;
-
-        if (properties.title !== undefined) {
-            const titleElement = nodeEntry.querySelector('.ts-title');
-            titleElement.textContent = properties.title;
+        if (!data || !data.node) return;
+        
+        const { node } = data;
+        this.allNodes[node.id] = node;
+        
+        // If the updated node is in the current view, update the view
+        if (!this.currentZoomNodeId || node.id === this.currentZoomNodeId || 
+            node.parent === this.currentZoomNodeId) {
+            this.renderTree({ nodes: Object.values(this.allNodes) });
         }
     }
 
     /**
-     * Handle node deleted event
-     * @param {Object} data - The delete data
+     * Handles when a node is deleted
+     * @param {Object} data - The node data
      */
     handleNodeDeleted(data) {
-        const { nodeId } = data;
-
-        const nodeLi = this.nodeElements.get(nodeId);
-        if (nodeLi) {
-            const parent = nodeLi.parentElement;
-            const isLastInList = parent.children.length === 1;
-
-            nodeLi.remove();
-            this.nodeElements.delete(nodeId);
-
-            if (isLastInList && parent.classList.contains('ts-root')) {
-                this.showEmptyState(parent);
+        if (!data || !data.nodeId) return;
+        
+        delete this.allNodes[data.nodeId];
+        
+        // If we're viewing the deleted node or its children, navigate up
+        if (this.currentZoomNodeId === data.nodeId) {
+            const node = this.allNodes[data.parentId];
+            if (node) {
+                this.zoomInToNode(node.id);
+            } else {
+                this.zoomOutToNode(null);
             }
+        } else {
+            // Otherwise, just update the current view
+            this.renderTree({ nodes: Object.values(this.allNodes) });
         }
     }
 
+    
     /**
-     * Handle node indented event
-     * @param {Object} data - The indent data
+     * Handles when a node is indented
+     * @param {Object} data - The node data
      */
     handleNodeIndented(data) {
-        const { nodeId, newParentId } = data;
-
-        const nodeLi = this.nodeElements.get(nodeId);
-        const newParentLi = this.nodeElements.get(newParentId);
-
-        if (!nodeLi || !newParentLi) return;
-
-        let parentUl = newParentLi.querySelector('ul');
-        if (!parentUl) {
-            parentUl = document.createElement('ul');
-            newParentLi.appendChild(parentUl);
-            newParentLi.classList.remove('ts-closed');
-            newParentLi.classList.add('ts-open');
+        if (!data || !data.nodeId) return;
+        
+        // Update the node's parent in our local state
+        const node = this.allNodes[data.nodeId];
+        if (node) {
+            node.parent = data.parentId;
+            this.renderTree({ nodes: Object.values(this.allNodes) });
         }
-
-        parentUl.appendChild(nodeLi);
-
-        // Refresh drag and drop handlers
-        if (this.dragDropHandler) {
-            this.dragDropHandler.initialize();
-        }
-
-        // Add buttons for inserting new nodes between existing ones
-        ContextMenu.addContextualAddButtons(this.rootElement, this.eventBus);
     }
-
+    
     /**
-     * Handle node outdented event
-     * @param {Object} data - The outdent data
+     * Handles when a node is outdented
+     * @param {Object} data - The node data
      */
     handleNodeOutdented(data) {
-        const { nodeId, newParentId } = data;
-
-        const nodeLi = this.nodeElements.get(nodeId);
-        if (!nodeLi) return;
-
-        const oldParentLi = nodeLi.parentElement.closest('li');
-        if (!oldParentLi) return;
-
-        let newParentList;
-        if (newParentId === 'trestle-root') {
-            newParentList = this.rootElement.querySelector('ul');
-        } else {
-            const newParentLi = this.nodeElements.get(newParentId);
-            if (!newParentLi) return;
-
-            newParentList = newParentLi.parentElement;
+        if (!data || !data.nodeId) return;
+        
+        // Update the node's parent in our local state
+        const node = this.allNodes[data.nodeId];
+        if (node) {
+            node.parent = data.parentId;
+            this.renderTree({ nodes: Object.values(this.allNodes) });
         }
-
-        if (!newParentList) return;
-
-        if (oldParentLi.nextElementSibling) {
-            newParentList.insertBefore(nodeLi, oldParentLi.nextElementSibling);
-        } else {
-            newParentList.appendChild(nodeLi);
-        }
-
-        // Refresh drag and drop handlers
-        if (this.dragDropHandler) {
-            this.dragDropHandler.initialize();
-        }
-
-        // Add buttons for inserting new nodes between existing ones
-        ContextMenu.addContextualAddButtons(this.rootElement, this.eventBus);
     }
 
     /**
-     * Find the position to insert a node at a specific index
-     * @param {HTMLElement} parentElement - The parent element
-     * @param {number} index - The index to insert at
-     * @returns {HTMLElement|null} The element after which to insert
+     * Renders an empty state when there are no nodes
      */
-    findInsertPosition(parentElement, index) {
-        if (index === undefined || index <= 0 || !parentElement) {
-            return null;
-        }
-
-        // Get all direct list item children
-        const children = Array.from(parentElement.children);
-
-        // If there are fewer children than the index, we can't insert at that position
-        if (children.length < index) {
-            return null;
-        }
-
-        // Return the element after which we should insert (index-1 because we're 0-indexed)
-        return children[index - 1];
+    renderEmptyState() {
+        const container = document.createElement('div');
+        container.className = 'empty-state';
+        
+        const title = document.createElement('h3');
+        title.textContent = 'No items yet';
+        
+        const message = document.createElement('p');
+        message.textContent = 'Click the "+" button to add your first item';
+        
+        container.appendChild(title);
+        container.appendChild(message);
+        this.rootElement.appendChild(container);
     }
 
     /**
-     * Show empty state when all nodes are deleted
-     * @param {HTMLElement} container - The container element
+     * Zooms in to a specific node
+     * @param {string} nodeId - The ID of the node to zoom into
+     * @param {boolean} addToHistory - Whether to add to navigation history
      */
-    showEmptyState(container) {
-        const emptyState = document.createElement('li');
-        emptyState.className = 'ts-empty-state';
+    zoomInToNode(nodeId, addToHistory = true) {
+        if (!nodeId || !this.allNodes[nodeId]) {
+            this.zoomOutToNode(null, addToHistory);
+            return;
+        }
         
-        const emptyText = document.createElement('div');
-        emptyText.className = 'ts-empty-text';
-        emptyText.textContent = 'Click to add your first item';
-        emptyText.addEventListener('click', () => {
-            this.eventBus.emit('view:addRootItem', {});
-        });
+        // Update navigation history if needed
+        if (addToHistory) {
+            // If we're not at the end of history, truncate the history
+            if (this.historyPosition < this.navigationHistory.length - 1) {
+                this.navigationHistory = this.navigationHistory.slice(0, this.historyPosition + 1);
+            }
+            
+            // Add to history if it's a new node
+            if (this.navigationHistory[this.historyPosition] !== nodeId) {
+                this.navigationHistory.push(nodeId);
+                this.historyPosition++;
+            }
+            
+            // Update navigation controls state
+            this.eventBus.emit('navigation:historyChanged', {
+                canGoBack: this.historyPosition > 0,
+                canGoForward: this.historyPosition < this.navigationHistory.length - 1
+            });
+        }
         
-        emptyState.appendChild(emptyText);
-        container.appendChild(emptyState);
-    }
-
-    zoomInToNode(nodeId) {
-        if (!nodeId || !this.allNodes[nodeId]) return;
+        // Update the view
         this.rootElement.innerHTML = '';
         this.nodeElements.clear();
         const tree = this.buildTreeStructure(Object.values(this.allNodes), nodeId);
         const rootUl = document.createElement('ul');
         rootUl.className = 'ts-root';
         this.rootElement.appendChild(rootUl);
+        
         for (const childId of tree.children || []) {
             const childData = tree.nodes.get(childId);
             if (childData) {
@@ -476,66 +394,113 @@ export default class TrestleView {
                 }
             }
         }
+        
         this.currentZoomNodeId = nodeId;
         this.updateBreadcrumb();
     }
 
-    zoomOutToNode(nodeId) {
-        if (nodeId === null || nodeId === '') {
-            this.currentZoomNodeId = null;
-            this.eventBus.emit('model:loaded', { nodes: Object.values(this.allNodes) });
-        } else {
-            this.zoomInToNode(nodeId);
-        }
-    }
-
-    updateBreadcrumb() {
-        if (!this.breadcrumbNav) return;
-        this.breadcrumbNav.innerHTML = '';
-        let path = [];
-        let nodeId = this.currentZoomNodeId;
-        while (nodeId && this.allNodes[nodeId]) {
-            path.unshift(this.allNodes[nodeId]);
-            nodeId = this.allNodes[nodeId].parent || null;
-        }
-        const rootNode = Object.values(this.allNodes).find(n => n.type === 'RootNode');
-        if (rootNode) {
-            this.breadcrumbNav.appendChild(this._makeBreadcrumbLink(rootNode, null));
-        }
-        path.forEach((node, idx) => {
-            this.breadcrumbNav.appendChild(this._makeBreadcrumbSeparator());
-            if (idx === path.length - 1) {
-                const span = document.createElement('span');
-                span.className = 'breadcrumb-current';
-                span.textContent = node.title || '(untitled)';
-                this.breadcrumbNav.appendChild(span);
+    /**
+     * Zooms out to a specific node
+     * @param {string} nodeId - The ID of the node to zoom out to
+     * @param {boolean} addToHistory - Whether to add to navigation history
+     */
+    zoomOutToNode(nodeId, addToHistory = true) {
+        console.log('zoomOutToNode called with nodeId:', nodeId, 'addToHistory:', addToHistory);
+        try {
+            if (nodeId === null || nodeId === '') {
+                console.log('Zooming out to root');
+                if (addToHistory) {
+                    console.log('Adding to history. Current history:', this.navigationHistory, 'position:', this.historyPosition);
+                    // Add root to history if needed
+                    if (this.navigationHistory[this.historyPosition] !== null) {
+                        console.log('Adding null to history');
+                        this.navigationHistory.push(null);
+                        this.historyPosition++;
+                    }
+                    
+                    // Update navigation controls state
+                    console.log('Emitting navigation:historyChanged event');
+                    this.eventBus.emit('navigation:historyChanged', {
+                        canGoBack: this.historyPosition > 0,
+                        canGoForward: this.historyPosition < this.navigationHistory.length - 1
+                    });
+                }
+                
+                console.log('Setting currentZoomNodeId to null');
+                this.currentZoomNodeId = null;
+                
+                console.log('Emitting model:loaded event');
+                const nodeValues = Object.values(this.allNodes);
+                console.log('Node values length:', nodeValues.length);
+                this.eventBus.emit('model:loaded', { nodes: nodeValues });
             } else {
-                this.breadcrumbNav.appendChild(this._makeBreadcrumbLink(node, node.id));
+                console.log('Zooming in to node:', nodeId);
+                this.zoomInToNode(nodeId, addToHistory);
             }
-        });
+            
+            console.log('Updating breadcrumb');
+            this.updateBreadcrumb();
+            console.log('zoomOutToNode completed successfully');
+        } catch (error) {
+            console.error('Error in zoomOutToNode:', error);
+            throw error; // Re-throw to fail the test
+        }
     }
 
-    _makeBreadcrumbLink(node, nodeId) {
-        const a = document.createElement('a');
-        a.href = '#';
-        a.className = 'breadcrumb-link';
-        a.textContent = node.title || '(untitled)';
-        a.dataset.nodeId = nodeId || '';
-        return a;
-    }
-
-    _makeBreadcrumbSeparator() {
-        const sep = document.createElement('span');
-        sep.className = 'breadcrumb-separator';
-        sep.textContent = '>';
-        return sep;
-    }
-
-    handleBreadcrumbClick(event) {
-        if (event.target.classList.contains('breadcrumb-link')) {
-            event.preventDefault();
-            const nodeId = event.target.dataset.nodeId || null;
-            this.zoomOutToNode(nodeId);
+    /**
+     * Updates the breadcrumb navigation based on the current node
+     */
+    updateBreadcrumb() {
+        if (!this.breadcrumb) return;
+        
+        try {
+            const node = {
+                id: this.currentZoomNodeId || 'root',
+                title: this.currentZoomNodeId ? 
+                    (this.allNodes[this.currentZoomNodeId]?.title || `Node ${this.currentZoomNodeId}`) : 
+                    'Home',
+                path: []
+            };
+            
+            // Build the path from current node to root
+            if (this.currentZoomNodeId && this.allNodes[this.currentZoomNodeId]) {
+                const path = [];
+                let currentNode = this.allNodes[this.currentZoomNodeId];
+                const visited = new Set(); // To prevent circular references
+                
+                // Traverse up the tree to build the path
+                while (currentNode && !visited.has(currentNode.id)) {
+                    visited.add(currentNode.id);
+                    
+                    // Add current node to path
+                    path.unshift({
+                        id: currentNode.id,
+                        title: currentNode.title || `Node ${currentNode.id}`
+                    });
+                    
+                    // Move to parent if it exists and we haven't visited it yet
+                    if (currentNode.parent && this.allNodes[currentNode.parent] && !visited.has(currentNode.parent)) {
+                        currentNode = this.allNodes[currentNode.parent];
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Set the path (excluding the current node which is already in the node object)
+                node.path = path.slice(0, -1);
+            }
+            
+            // Emit the node:updated event to update the breadcrumb
+            this.eventBus.emit('node:updated', { node });
+            
+            // Also emit a navigation:locationChanged event for other components
+            this.eventBus.emit('navigation:locationChanged', {
+                nodeId: node.id,
+                nodeTitle: node.title,
+                path: node.path
+            });
+        } catch (error) {
+            console.error('Error in updateBreadcrumb:', error);
         }
     }
 }
