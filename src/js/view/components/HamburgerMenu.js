@@ -13,9 +13,17 @@ export class HamburgerMenu {
     this.eventBus = eventBus;
     this.isOpen = false;
     
-    // Cache DOM elements
-    this.hamburgerButton = this.rootElement.querySelector('#hamburgerButton');
-    this.menuBox = this.rootElement.querySelector('#menu-box');
+    // Cache DOM elements globally
+    this.hamburgerButton = document.querySelector('#hamburgerButton');
+    this.menuBox = document.querySelector('#menu-box');
+    
+    console.log('[HamburgerMenu] constructor:', {
+      rootElement,
+      rootElementHTML: rootElement ? rootElement.outerHTML : null,
+      hamburgerButton: this.hamburgerButton,
+      menuBox: this.menuBox,
+      readyState: document.readyState
+    });
     
     if (!this.hamburgerButton || !this.menuBox) {
       console.warn('Hamburger menu elements not found');
@@ -29,6 +37,7 @@ export class HamburgerMenu {
    * Initialize the hamburger menu
    */
   initialize() {
+    console.log('[HamburgerMenu] initialize: attaching click event');
     this.hamburgerButton.addEventListener('click', this.toggleMenu.bind(this));
     
     // Close menu when clicking outside
@@ -52,6 +61,7 @@ export class HamburgerMenu {
    * Toggle the menu visibility
    */
   toggleMenu() {
+    console.log('[HamburgerMenu] toggleMenu called, isOpen:', this.isOpen);
     if (this.isOpen) {
       this.closeMenu();
     } else {
@@ -63,6 +73,7 @@ export class HamburgerMenu {
    * Open the menu
    */
   openMenu() {
+    console.log('[HamburgerMenu] openMenu');
     this.isOpen = true;
     this.menuBox.classList.remove('hidden');
     this.hamburgerButton.setAttribute('aria-expanded', 'true');
@@ -73,6 +84,7 @@ export class HamburgerMenu {
    * Close the menu
    */
   closeMenu() {
+    console.log('[HamburgerMenu] closeMenu');
     this.isOpen = false;
     this.menuBox.classList.add('hidden');
     this.hamburgerButton.setAttribute('aria-expanded', 'false');

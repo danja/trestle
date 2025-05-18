@@ -5,6 +5,7 @@ import { ContextMenu } from './components/ContextMenu.js';
 import { ExpanderButton } from './components/ExpanderButton.js';
 import { InlineEditor } from './components/InlineEditor.js';
 import { NodeSelector } from './components/NodeSelector.js';
+import { HamburgerMenu } from './components/HamburgerMenu.js';
 
 export default class TrestleView {
     constructor(rootElement, eventBus) {
@@ -16,6 +17,13 @@ export default class TrestleView {
         // Initialize component instances
         this.cardDetail = new CardDetail(eventBus);
         this.contextMenu = new ContextMenu(eventBus);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                this.hamburgerMenu = new HamburgerMenu(document.getElementById('header-outer'), eventBus);
+            });
+        } else {
+            this.hamburgerMenu = new HamburgerMenu(document.getElementById('header-outer'), eventBus);
+        }
         this.nodeSelector = null; // Will be initialized after DOM is populated
         this.inlineEditor = null; // Will be initialized after DOM is populated
         this.expanderButton = null; // Will be initialized after DOM is populated
