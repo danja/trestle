@@ -240,26 +240,40 @@ export default class TrestleView {
         };
     }
 
-    /**
-     * Handles when a node is added
-     * @param {Object} data - The node data
-     */
     handleNodeAdded(data) {
         if (!data || !data.node) return;
-        
         const { node } = data;
-        this.allNodes[node.id] = node;
-        
+        // --- Construct the full path from root to this node (excluding itself) ---
+        const path = [];
+        let current = node;
+        const visited = new Set();
+        while (current && current.parent && this.allNodes[current.parent] && !visited.has(current.parent)) {
+            visited.add(current.parent);
+            const parentNode = this.allNodes[current.parent];
+            path.unshift({ id: parentNode.id, title: parentNode.title || `Node ${parentNode.id}` });
+            current = parentNode;
+        }
+        node.path = path;
+        console.log('[TrestleView][handleNodeAdded] Adding node:', node);
+        console.log('[TrestleView][handleNodeAdded] allNodes before refresh:', JSON.parse(JSON.stringify(this.allNodes)));
+        if (this.model && typeof this.model.getAllNodes === 'function') {
+            const allModelNodes = this.model.getAllNodes();
+            console.log('[TrestleView][handleNodeAdded] model.getAllNodes():', allModelNodes);
+            this.allNodes = {};
+            for (const n of allModelNodes) {
+                this.allNodes[n.id] = n;
+            }
+            console.log('[TrestleView][handleNodeAdded] allNodes after refresh:', JSON.parse(JSON.stringify(this.allNodes)));
+        } else {
+            this.allNodes[node.id] = node;
+        }
         // If we're at the root or the node's parent is in the current view, update the view
         if (!this.currentZoomNodeId || node.parent === this.currentZoomNodeId) {
+            console.log('[TrestleView][handleNodeAdded] Rendering tree with nodes:', Object.values(this.allNodes));
             this.renderTree({ nodes: Object.values(this.allNodes) });
         }
     }
 
-    /**
-     * Handles when a node is updated
-     * @param {Object} data - The node data
-     */
     handleNodeUpdated(data) {
         if (!data || !data.node) return;
         
@@ -453,6 +467,14 @@ export default class TrestleView {
     updateBreadcrumb() {
         if (!this.breadcrumb) return;
         
+        // Prevent recursive calls
+        if (this._updatingBreadcrumb) {
+            console.warn('[TrestleView] Prevented recursive updateBreadcrumb call');
+            return;
+        }
+        
+        this._updatingBreadcrumb = true;
+        
         try {
             const node = {
                 id: this.currentZoomNodeId || 'root',
@@ -488,10 +510,22 @@ export default class TrestleView {
                 
                 // Set the path (excluding the current node which is already in the node object)
                 node.path = path.slice(0, -1);
+            } else {
+                // If we're at the root level, ensure we have a valid path structure
+                node.path = [];
+                
+                // Add a root node entry if we're not already at the root
+                if (node.id !== 'root') {
+                    node.path.push({
+                        id: 'root',
+                        title: 'Home'
+                    });
+                }
             }
             
-            // Emit the node:updated event to update the breadcrumb
-            this.eventBus.emit('node:updated', { node });
+            // Use a different event name to avoid triggering handleNodeUpdated
+            // This breaks the circular dependency: renderTree → updateBreadcrumb → node:updated → handleNodeUpdated → renderTree
+            this.eventBus.emit('breadcrumb:update', { node });
             
             // Also emit a navigation:locationChanged event for other components
             this.eventBus.emit('navigation:locationChanged', {
@@ -501,6 +535,8 @@ export default class TrestleView {
             });
         } catch (error) {
             console.error('Error in updateBreadcrumb:', error);
+        } finally {
+            this._updatingBreadcrumb = false;
         }
     }
 }

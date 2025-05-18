@@ -6,7 +6,7 @@
   "scripts": {
     "build": "webpack --mode production",
     "dev": "webpack serve --mode development",
-    "test": "vitest",
+    "test": "vitest --run",
     "test:ui": "vitest --ui",
     "docs": "jsdoc -c jsdoc.json",
     "rp": "repomix -c repomix.config.json ."
