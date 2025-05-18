@@ -100,7 +100,8 @@ function setupUIListeners(controller) {
         })
     }
 
-    // Mobile menu
+    // Mobile menu (handled by HamburgerMenu component)
+    /*
     if (hamburgerButton && menuBox) {
         hamburgerButton.addEventListener('click', (event) => {
             menuBox.classList.toggle('hidden')
@@ -118,6 +119,7 @@ function setupUIListeners(controller) {
             }
         })
     }
+    */
 
     // Card close button
     if (cardClose) {

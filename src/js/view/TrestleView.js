@@ -5,6 +5,8 @@ import { ContextMenu } from './components/ContextMenu.js';
 import { ExpanderButton } from './components/ExpanderButton.js';
 import { InlineEditor } from './components/InlineEditor.js';
 import { NodeSelector } from './components/NodeSelector.js';
+import { HamburgerMenu } from './components/HamburgerMenu.js';
+import { Breadcrumb } from './components/Breadcrumb.js'; // [CASCADE] Imported Breadcrumb component
 
 export default class TrestleView {
     constructor(rootElement, eventBus) {
@@ -16,15 +18,32 @@ export default class TrestleView {
         // Initialize component instances
         this.cardDetail = new CardDetail(eventBus);
         this.contextMenu = new ContextMenu(eventBus);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                this.hamburgerMenu = new HamburgerMenu(document.getElementById('header-outer'), eventBus);
+            });
+        } else {
+            this.hamburgerMenu = new HamburgerMenu(document.getElementById('header-outer'), eventBus);
+        }
         this.nodeSelector = null; // Will be initialized after DOM is populated
         this.inlineEditor = null; // Will be initialized after DOM is populated
         this.expanderButton = null; // Will be initialized after DOM is populated
         this.dragDropHandler = null; // Will be initialized after DOM is populated
 
-        // Breadcrumb state
+// Breadcrumb state
+
         this.currentZoomNodeId = null; // null means root
         this.breadcrumbNav = document.querySelector('.breadcrumb');
         this.handleBreadcrumbClick = this.handleBreadcrumbClick.bind(this);
+        // [CASCADE] Initialize Breadcrumb component if nav element exists
+        if (this.breadcrumbNav && this.eventBus) {
+            this.breadcrumb = new Breadcrumb(this.breadcrumbNav, this.eventBus);
+            this.breadcrumb.initialize();
+            console.log('[CASCADE][TrestleView] Breadcrumb initialized:', this.breadcrumb);
+        } else {
+            this.breadcrumb = null;
+            console.warn('[CASCADE][TrestleView] Breadcrumb NOT initialized. breadcrumbNav:', this.breadcrumbNav, 'eventBus:', this.eventBus);
+        }
         if (this.breadcrumbNav) {
             this.breadcrumbNav.addEventListener('click', this.handleBreadcrumbClick);
         }
@@ -78,8 +97,21 @@ export default class TrestleView {
      */
     setupEventListeners() {
         // Model event listeners
-        this.eventBus.on('model:loaded', this.renderTree.bind(this));
-        this.eventBus.on('model:created', this.renderTree.bind(this));
+        // [CASCADE] Set this.allNodes from event data before rendering the tree
+        this.eventBus.on('model:loaded', (data) => {
+            this.allNodes = {};
+            if (data && data.nodes) {
+                data.nodes.forEach(node => { this.allNodes[node.id] = node; });
+            }
+            this.renderTree();
+        });
+        this.eventBus.on('model:created', (data) => {
+            this.allNodes = {};
+            if (data && data.nodes) {
+                data.nodes.forEach(node => { this.allNodes[node.id] = node; });
+            }
+            this.renderTree();
+        });
         this.eventBus.on('node:added', this.handleNodeAdded.bind(this));
         this.eventBus.on('node:updated', this.handleNodeUpdated.bind(this));
         this.eventBus.on('node:deleted', this.handleNodeDeleted.bind(this));
@@ -122,25 +154,23 @@ export default class TrestleView {
      * Render the tree from model data
      * @param {Object} data - The tree data from the model
      */
-    renderTree(data) {
-        console.log('Rendering tree with data:', data);
+    renderTree(nodeId = null) {
         this.rootElement.innerHTML = '';
         this.nodeElements.clear();
 
-        let rootNode = data.nodes.find(node => node.type === 'RootNode');
-        console.log('Root node:', rootNode);
+        if (!this.allNodes) {
+            console.warn('[CASCADE][TrestleView] this.allNodes is not set in renderTree, skipping render.');
+            return;
+        }
+        const nodes = Object.values(this.allNodes);
+        let rootNode = nodes.find(node => node.type === 'RootNode');
         if (!rootNode) {
-            console.error('No root node found. Data received:', data);
-            const fallbackRootNode = data.nodes[0];
-            if (fallbackRootNode) {
-                console.warn('Falling back to first node as root:', fallbackRootNode);
-                rootNode = fallbackRootNode;
-            } else {
-                return;
-            }
+            console.error('No root node found. Nodes available:', nodes);
+            rootNode = nodes[0];
+            if (!rootNode) return;
         }
 
-        const tree = this.buildTreeStructure(data.nodes, rootNode.id);
+        const tree = this.buildTreeStructure(Object.values(this.allNodes), rootNode.id);
 
         const rootUl = document.createElement('ul');
         rootUl.className = 'ts-root';
@@ -176,6 +206,17 @@ export default class TrestleView {
             if (nodeElement) {
                 this.nodeElements.set(rootNode.id, nodeElement);
             }
+        }
+        // [CASCADE] Emit breadcrumb:update event for new Breadcrumb component
+        if (this.breadcrumb && this.eventBus) {
+            let path = [];
+            let nodeId = this.currentZoomNodeId || (rootNode && rootNode.id);
+            while (nodeId && this.allNodes[nodeId]) {
+                path.unshift(this.allNodes[nodeId]);
+                nodeId = this.allNodes[nodeId].parent || null;
+            }
+            console.log('[CASCADE][TrestleView] Emitting breadcrumb:update with path:', path);
+            this.eventBus.emit('breadcrumb:update', { node: { path } });
         }
     }
 
@@ -477,6 +518,17 @@ export default class TrestleView {
             }
         }
         this.currentZoomNodeId = nodeId;
+        // [CASCADE] Emit breadcrumb:update event for new Breadcrumb component
+        if (this.breadcrumb && this.eventBus) {
+            let path = [];
+            let nodeId = this.currentZoomNodeId;
+            while (nodeId && this.allNodes[nodeId]) {
+                path.unshift(this.allNodes[nodeId]);
+                nodeId = this.allNodes[nodeId].parent || null;
+            }
+            console.log('[CASCADE][TrestleView] Emitting breadcrumb:update with path:', path);
+            this.eventBus.emit('breadcrumb:update', { node: { path } });
+        }
         this.updateBreadcrumb();
     }
 
@@ -490,29 +542,22 @@ export default class TrestleView {
     }
 
     updateBreadcrumb() {
-        if (!this.breadcrumbNav) return;
-        this.breadcrumbNav.innerHTML = '';
-        let path = [];
-        let nodeId = this.currentZoomNodeId;
-        while (nodeId && this.allNodes[nodeId]) {
-            path.unshift(this.allNodes[nodeId]);
-            nodeId = this.allNodes[nodeId].parent || null;
-        }
-        const rootNode = Object.values(this.allNodes).find(n => n.type === 'RootNode');
-        if (rootNode) {
-            this.breadcrumbNav.appendChild(this._makeBreadcrumbLink(rootNode, null));
-        }
-        path.forEach((node, idx) => {
-            this.breadcrumbNav.appendChild(this._makeBreadcrumbSeparator());
-            if (idx === path.length - 1) {
-                const span = document.createElement('span');
-                span.className = 'breadcrumb-current';
-                span.textContent = node.title || '(untitled)';
-                this.breadcrumbNav.appendChild(span);
-            } else {
-                this.breadcrumbNav.appendChild(this._makeBreadcrumbLink(node, node.id));
-            }
-        });
+        // [CASCADE] Disabled old breadcrumb logic to allow new Breadcrumb component to control rendering.
+        // if (!this.breadcrumbNav) return;
+        // this.breadcrumbNav.innerHTML = '';
+        // let path = [];
+        // let nodeId = this.currentZoomNodeId;
+        // while (nodeId && this.allNodes[nodeId]) {
+        //     path.unshift(this.allNodes[nodeId]);
+        //     nodeId = this.allNodes[nodeId].parent || null;
+        // }
+        // const rootNode = Object.values(this.allNodes).find(n => n.type === 'RootNode');
+        // if (rootNode) {
+        //     this.breadcrumbNav.appendChild(this._makeBreadcrumbLink(rootNode, null));
+        // }
+        // path.forEach((node, idx) => {
+        //     this.breadcrumbNav.appendChild(this._makeBreadcrumbLink(node, node.id));
+        // });
     }
 
     _makeBreadcrumbLink(node, nodeId) {
