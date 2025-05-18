@@ -12,7 +12,7 @@ export default class TrestleView {
         this.eventBus = eventBus;
         this.template = document.getElementById('entry-template');
         this.nodeElements = new Map();
-
+        
         // Initialize component instances
         this.cardDetail = new CardDetail(eventBus);
         this.contextMenu = new ContextMenu(eventBus);
@@ -85,32 +85,32 @@ export default class TrestleView {
         this.eventBus.on('node:deleted', this.handleNodeDeleted.bind(this));
         this.eventBus.on('view:nodeIndented', this.handleNodeIndented.bind(this));
         this.eventBus.on('view:nodeOutdented', this.handleNodeOutdented.bind(this));
-
+        
         // View event listeners
         this.eventBus.on('view:selectNode', (data) => {
             if (this.nodeSelector) {
                 this.nodeSelector.selectNode(data.nodeId);
             }
         });
-
+        
         this.eventBus.on('view:navigateUp', (data) => {
             if (this.nodeSelector) {
                 this.nodeSelector.navigateUp(data.nodeId);
             }
         });
-
+        
         this.eventBus.on('view:navigateDown', (data) => {
             if (this.nodeSelector) {
                 this.nodeSelector.navigateDown(data.nodeId);
             }
         });
-
+        
         this.eventBus.on('view:moveNodeUp', (data) => {
             if (this.nodeSelector) {
                 this.nodeSelector.moveNodeUp(data.nodeId);
             }
         });
-
+        
         this.eventBus.on('view:moveNodeDown', (data) => {
             if (this.nodeSelector) {
                 this.nodeSelector.moveNodeDown(data.nodeId);
@@ -446,14 +446,14 @@ export default class TrestleView {
     showEmptyState(container) {
         const emptyState = document.createElement('li');
         emptyState.className = 'ts-empty-state';
-
+        
         const emptyText = document.createElement('div');
         emptyText.className = 'ts-empty-text';
         emptyText.textContent = 'Click to add your first item';
         emptyText.addEventListener('click', () => {
             this.eventBus.emit('view:addRootItem', {});
         });
-
+        
         emptyState.appendChild(emptyText);
         container.appendChild(emptyState);
     }
