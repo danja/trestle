@@ -1,5 +1,11 @@
 # Trestle - Modern Hierarchical Todo List
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/danja/trestle)
+
+**Status 2025-05-18 : mostly there, but buggy, far from finished**
+
+*Notes below mostly slop*
+
 Trestle is a web-based hierarchical todo list application with RDF/SPARQL backend support. It allows you to create, organize, and manage nested tasks with rich text descriptions using markdown.
 
 ## Features
