@@ -441,10 +441,8 @@ export class Breadcrumb {
    * Render the breadcrumb
    */
   render() {
-    // Breadcrumb disabled for test isolation
-    if (this.rootElement) this.rootElement.innerHTML = '';
-    this._isRendering = false;
-    return;
+    console.log('[CASCADE][Breadcrumb] render called', this.currentNode);
+
   //
     console.log('[Breadcrumb][DEBUG] render called, currentNode:', this.currentNode);
 

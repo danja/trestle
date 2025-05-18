@@ -207,6 +207,17 @@ export default class TrestleView {
                 this.nodeElements.set(rootNode.id, nodeElement);
             }
         }
+        // [CASCADE] Emit breadcrumb:update event for new Breadcrumb component
+        if (this.breadcrumb && this.eventBus) {
+            let path = [];
+            let nodeId = this.currentZoomNodeId || (rootNode && rootNode.id);
+            while (nodeId && this.allNodes[nodeId]) {
+                path.unshift(this.allNodes[nodeId]);
+                nodeId = this.allNodes[nodeId].parent || null;
+            }
+            console.log('[CASCADE][TrestleView] Emitting breadcrumb:update with path:', path);
+            this.eventBus.emit('breadcrumb:update', { node: { path } });
+        }
     }
 
     /**
