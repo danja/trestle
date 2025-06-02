@@ -250,32 +250,21 @@ export class RightPanel {
       // Set up console event listeners
       this.setupConsoleListener();
       
-      // Log a welcome message
-      this.logToConsole('Console ready. Use Ctrl+Shift+C (Cmd+Shift+C on Mac) to toggle this panel.', 'info');
-      
-      // Log any early errors that occurred before the console was ready
-      if (window.earlyConsoleErrors) {
-        window.earlyConsoleErrors.forEach(error => {
-          this.logToConsole(error.message, 'error');
-        });
-        window.earlyConsoleErrors = [];
-      }
-      
-      // Set up console event listeners
-      this.setupConsoleListener();
-      
       // Set up file link handlers for stack traces
       if (this.consoleOutput) {
         this.setupFileLinkHandlers();
       }
       
-      // Log a welcome message
-      this.logToConsole('Console ready. Use Ctrl+Shift+C (Cmd+Shift+C on Mac) to toggle this panel.', 'info');
+      // Log a welcome message with proper HTML escaping
+      const welcomeMsg = 'Console ready. Use Ctrl+Shift+C (Cmd+Shift+C on Mac) to toggle this panel.';
+      this.logToConsole(welcomeMsg, 'info');
       
       // Log any early errors that occurred before the console was ready
       if (window.earlyConsoleErrors) {
         window.earlyConsoleErrors.forEach(error => {
-          this.logToConsole(error.message, 'error');
+          if (error && error.message) {
+            this.logToConsole(typeof error.message === 'string' ? error.message : String(error), 'error');
+          }
         });
         window.earlyConsoleErrors = [];
       }
@@ -722,6 +711,19 @@ export class RightPanel {
   }
   
   /**
+   * Unescape HTML entities in a string
+   * @param {string} str - The string to unescape
+   * @returns {string} The unescaped string
+   */
+  unescapeHtml(escapedStr) {
+    if (typeof escapedStr !== 'string') return escapedStr;
+    
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = escapedStr;
+    return textarea.textContent || textarea.innerText || '';
+  }
+
+  /**
    * Log a message to the console output with loglevel filtering
    * @param {string} message - The message to log
    * @param {string} type - The type of log ('log', 'error', 'warn', 'info', 'debug')
@@ -748,17 +750,35 @@ export class RightPanel {
       return;
     }
     
+    // Convert message to string if it's not already
+    let messageStr;
+    try {
+      // First convert to string, handling objects and other types
+      messageStr = typeof message === 'string' 
+        ? message 
+        : (message instanceof Error ? message.stack || message.message : JSON.stringify(message, null, 2));
+      
+      // Unescape any HTML entities in the message
+      messageStr = this.unescapeHtml(messageStr);
+      
+    } catch (e) {
+      messageStr = String(message);
+    }
+    
     // Log to browser console using the appropriate loglevel method
+    // Use the raw message for the browser console to avoid double-escaping
+    const rawMessage = message instanceof Error ? message : (typeof message === 'object' ? message : messageStr);
+    
     if (type === 'error') {
-      this.logger.error(message);
+      this.logger.error(rawMessage);
     } else if (type === 'warn') {
-      this.logger.warn(message);
+      this.logger.warn(rawMessage);
     } else if (type === 'info' || type === 'log') {
-      this.logger.info(message);
+      this.logger.info(rawMessage);
     } else if (type === 'debug') {
-      this.logger.debug(message);
+      this.logger.debug(rawMessage);
     } else if (type === 'trace') {
-      this.logger.trace(message);
+      this.logger.trace(rawMessage);
     }
     
     // Format and display in the UI console
@@ -775,9 +795,11 @@ export class RightPanel {
       } else if (message === null) {
         formattedMessage = '<span class="null">null</span>';
       } else if (message instanceof Error) {
-        const stack = this.formatStacktrace(message.stack);
+        const stack = this.formatStacktrace(message.stack || '');
+        // Ensure we properly escape the error message for HTML display
+        const errorMessage = this.escapeHtml(this.unescapeHtml(message.message || 'Error'));
         formattedMessage = 
-          `<span class="error">${this.escapeHtml(message.message)}</span>\n${stack}`;
+          `<span class="error">${errorMessage}</span>${stack ? '\n' + stack : ''}`;
       } else if (typeof message === 'object') {
         try {
           // First try to stringify with circular reference handling
@@ -789,18 +811,29 @@ export class RightPanel {
               }
               this.seen.add(value);
             }
+            // Convert any HTML strings to plain text to prevent XSS
+            if (typeof value === 'string') {
+              return this.unescapeHtml(value);
+            }
             return value;
           }, 2);
           
-          // Apply syntax highlighting
-          formattedMessage = this.syntaxHighlight(JSON.parse(jsonString));
+          // If successful, use the pretty-printed JSON
+          formattedMessage = this.syntaxHighlight(jsonString);
         } catch (e) {
-          // Fallback for objects that can't be stringified
-          try {
-            formattedMessage = this.escapeHtml(String(message));
-          } catch (e2) {
-            formattedMessage = '<span class="error">[Unserializable Object]</span>';
-          }
+          // If stringify fails (e.g., due to circular refs), use a simpler representation
+          formattedMessage = this.escapeHtml(String(message));
+        } 
+      } else if (typeof message === 'string') {
+        // First unescape any HTML entities
+        let processedMessage = this.unescapeHtml(message);
+        
+        // Format stack traces with clickable file links
+        if (processedMessage.includes(' at ') && (processedMessage.includes('.js:') || processedMessage.includes('.html:'))) {
+          formattedMessage = this.formatStacktrace(processedMessage);
+        } else {
+          // Escape HTML for safe display in the UI
+          formattedMessage = this.escapeHtml(processedMessage).replace(/\n/g, '<br>');
         }
       } else if (typeof message === 'boolean') {
         formattedMessage = `<span class="boolean">${message}</span>`;
@@ -811,10 +844,11 @@ export class RightPanel {
         formattedMessage = this.escapeHtml(String(message)).replace(/\n/g, '<br>');
       }
       
+      // Don't escape formattedMessage again as it's already been escaped
       logEntry.innerHTML = `
         <span class="console-type">${type.toUpperCase()}</span>
         <span class="console-time">${timestamp}</span>
-        <span class="console-message">${this.escapeHtml(formattedMessage)}</span>
+        <span class="console-message">${formattedMessage}</span>
       `;
       
       // Add to the console output
