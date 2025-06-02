@@ -142,6 +142,62 @@ export class RightPanel {
     console.log('[RightPanel] Initializing event listeners');
     
     try {
+      // Add log level selector to console header
+      if (this.consoleContent) {
+        // Try to load saved log level from localStorage
+        let savedLogLevel = 'info'; // Default
+        try {
+          savedLogLevel = localStorage.getItem('trestle:logLevel') || 'info';
+          // Validate the saved log level
+          const validLevels = ['trace', 'debug', 'info', 'warn', 'error', 'silent'];
+          if (!validLevels.includes(savedLogLevel)) {
+            savedLogLevel = 'info';
+          }
+          // Apply the saved log level
+          this.setLogLevel(savedLogLevel, false);
+        } catch (e) {
+          console.warn('Could not load log level from localStorage:', e);
+        }
+        const consoleHeader = document.createElement('div');
+        consoleHeader.className = 'console-header';
+        consoleHeader.innerHTML = `
+          <div class="log-level-selector">
+            <label for="log-level">Log Level:</label>
+            <select id="log-level">
+              <option value="trace">Trace</option>
+              <option value="debug">Debug</option>
+              <option value="info" selected>Info</option>
+              <option value="warn">Warn</option>
+              <option value="error">Error</option>
+              <option value="silent">Silent</option>
+            </select>
+          </div>
+          <div class="console-actions">
+            <button id="clear-console" title="Clear console">
+              <i class="icon-clear"></i>
+              <span>Clear</span>
+            </button>
+          </div>
+        `;
+        
+        // Insert the header at the top of the console content
+        if (this.consoleOutput) {
+          this.consoleContent.insertBefore(consoleHeader, this.consoleOutput);
+        } else {
+          this.consoleContent.prepend(consoleHeader);
+        }
+        
+        // Set up log level change handler
+        const logLevelSelect = consoleHeader.querySelector('#log-level');
+        if (logLevelSelect) {
+          logLevelSelect.addEventListener('change', (e) => {
+            this.setLogLevel(e.target.value);
+          });
+        }
+        
+        // Update the clear console button reference
+        this.clearConsoleButton = consoleHeader.querySelector('#clear-console');
+      }
       // Set up event listeners for panel controls
       if (this.closeButton) {
         this.closeButton.addEventListener('click', () => {
@@ -590,7 +646,12 @@ export class RightPanel {
    * Set the logging level for the console
    * @param {string} level - The log level to set ('trace', 'debug', 'info', 'warn', 'error', 'silent')
    */
-  setLogLevel(level) {
+  /**
+   * Set the logging level for the console
+   * @param {string} level - The log level to set ('trace', 'debug', 'info', 'warn', 'error', 'silent')
+   * @param {boolean} [updateSelector=true] - Whether to update the UI selector
+   */
+  setLogLevel(level, updateSelector = true) {
     const levelMap = {
       'trace': log.levels.TRACE,
       'debug': log.levels.DEBUG,
@@ -600,11 +661,28 @@ export class RightPanel {
       'silent': log.levels.SILENT
     };
     
-    const newLevel = levelMap[level.toLowerCase()];
+    const levelLower = level.toLowerCase();
+    const newLevel = levelMap[levelLower];
     
     if (newLevel !== undefined) {
       this.logger.setLevel(newLevel);
+      
+      // Update the selector if it exists and we're not being called from a selector change
+      if (updateSelector && this.consoleContent) {
+        const selector = this.consoleContent.querySelector('#log-level');
+        if (selector && selector.value !== levelLower) {
+          selector.value = levelLower;
+        }
+      }
+      
       this.logToConsole(`Log level set to: ${level.toUpperCase()}`, 'info', true);
+      
+      // Store the log level in localStorage for persistence
+      try {
+        localStorage.setItem('trestle:logLevel', levelLower);
+      } catch (e) {
+        console.warn('Could not save log level to localStorage:', e);
+      }
     } else {
       this.logger.warn(`Invalid log level: ${level}. Valid levels are: ${Object.keys(levelMap).join(', ')}`);
     }
