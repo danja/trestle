@@ -1,4 +1,4 @@
-# Trestle - Modern Hierarchical Todo List
+# Trestle - Hierarchical Todo List
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/danja/trestle)
 
