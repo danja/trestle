@@ -21,15 +21,17 @@ export default class ConsolePanel {
    */
   initialize(container) {
     if (!container) {
-      console.error('Console container element not provided');
+      this.logger.error('Console container element not provided');
       return;
     }
 
-    this.consoleOutput = container.querySelector('#console-output');
-    this.consoleEmptyState = container.querySelector('.console-empty-state');
+    // The container should be the #console-content element
+    this.container = container;
+    this.consoleOutput = this.container.querySelector('.console-output');
+    this.consoleEmptyState = this.container.querySelector('.console-empty-state');
 
     if (!this.consoleOutput) {
-      console.error('Console output element not found');
+      this.logger.error('Console output element not found in container');
       return;
     }
 

@@ -22,10 +22,11 @@ export default class ShortcutsPanel {
       return;
     }
 
+    // The container should be the #shortcuts-content element
     this.container = container;
     this.loadShortcuts();
-    this.render();
     this.setupEventListeners();
+    this.render();
 
     this.logger.info('Shortcuts panel initialized');
   }
@@ -62,21 +63,49 @@ export default class ShortcutsPanel {
    * Render the shortcuts list
    */
   render() {
-    if (!this.container) return;
+    if (!this.container) {
+      this.logger.warn('Cannot render shortcuts: container not found');
+      return;
+    }
 
-    this.container.innerHTML = `
-      <div class="shortcuts-header">
-        <h3>Keyboard Shortcuts</h3>
-      </div>
-      <div class="shortcuts-list">
-        ${this.shortcuts.map(shortcut => `
-          <div class="shortcut-item">
-            <span class="shortcut-key">${this.escapeHtml(shortcut.key)}</span>
-            <span class="shortcut-description">${this.escapeHtml(shortcut.description)}</span>
-          </div>
-        `).join('')}
-      </div>
-    `;
+    try {
+      // Clear existing content
+      this.container.innerHTML = '';
+      
+      // Create header
+      const header = document.createElement('div');
+      header.className = 'shortcuts-header';
+      header.innerHTML = '<h3>Keyboard Shortcuts</h3>';
+      
+      // Create list container
+      const list = document.createElement('div');
+      list.className = 'shortcuts-list';
+      
+      // Add shortcut items
+      this.shortcuts.forEach(shortcut => {
+        const item = document.createElement('div');
+        item.className = 'shortcut-item';
+        
+        const key = document.createElement('span');
+        key.className = 'shortcut-key';
+        key.textContent = this.escapeHtml(shortcut.key);
+        
+        const desc = document.createElement('span');
+        desc.className = 'shortcut-description';
+        desc.textContent = this.escapeHtml(shortcut.description);
+        
+        item.appendChild(key);
+        item.appendChild(desc);
+        list.appendChild(item);
+      });
+      
+      // Add elements to container
+      this.container.appendChild(header);
+      this.container.appendChild(list);
+      
+    } catch (error) {
+      this.logger.error('Error rendering shortcuts:', error);
+    }
   }
 
   /**
