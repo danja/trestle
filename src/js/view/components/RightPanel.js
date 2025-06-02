@@ -46,6 +46,11 @@ export class RightPanel {
     this.logger.info('Initializing RightPanel');
     this.eventBus = eventBus;
     
+    // Initialize resizing state
+    this.isResizing = false;
+    this.lastDownX = 0;
+    this.startWidth = 400; // Default width
+    
     // Get DOM elements
     this.panel = document.getElementById('right-panel');
     this.panelTitle = document.getElementById('panel-title');
@@ -110,8 +115,11 @@ export class RightPanel {
     // Initialize the panel
     this.initialize();
     
+    // Set up resize handlers
+    this.setupResizeHandlers();
+    
     // Log that initialization is complete
-    console.log('[RightPanel] Initialization complete');
+    this.logger.info('[RightPanel] Initialization complete');
     
     // Add a temporary style to help debug
     const style = document.createElement('style');
@@ -928,18 +936,72 @@ export class RightPanel {
   }
   
   /**
-   * Clear the console output
+   * Set up resize handlers for the panel
    */
-  clearConsole() {
-    if (this.consoleOutput) {
-      this.consoleOutput.innerHTML = '';
-      this.unreadCount = 0;
-      this.updateNotificationBadge();
+  setupResizeHandlers() {
+    if (!this.panel) return;
+
+    const handleMouseDown = (e) => {
+      // Only start resizing if clicking near the left edge
+      const rect = this.panel.getBoundingClientRect();
+      const handleWidth = 8; // Should match the width in CSS
       
-      // Show empty state again
-      if (this.consoleEmptyState) {
-        this.consoleEmptyState.style.display = 'flex';
+      if (e.clientX >= rect.left - handleWidth && e.clientX <= rect.left + handleWidth) {
+        this.isResizing = true;
+        this.startWidth = rect.width;
+        this.lastDownX = e.clientX;
+        this.panel.classList.add('resizing');
+        
+        // Prevent text selection during resize
+        document.body.style.userSelect = 'none';
+        
+        e.preventDefault();
+        e.stopPropagation();
       }
+    };
+    
+    const handleMouseMove = (e) => {
+      if (!this.isResizing) return;
+      
+      const deltaX = this.lastDownX - e.clientX;
+      const newWidth = this.startWidth + deltaX;
+      
+      // Enforce min and max width constraints
+      if (newWidth >= 300 && newWidth <= 800) {
+        this.panel.style.width = `${newWidth}px`;
+      }
+      
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    
+    const handleMouseUp = () => {
+      if (this.isResizing) {
+        this.isResizing = false;
+        this.panel.classList.remove('resizing');
+        document.body.style.userSelect = '';
+      }
+    };
+    
+    // Add event listeners
+    this.panel.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    // Store cleanup function
+    this.cleanupResizeHandlers = () => {
+      this.panel.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }
+  
+  /**
+   * Clean up event listeners when the panel is destroyed
+   */
+  destroy() {
+    if (this.cleanupResizeHandlers) {
+      this.cleanupResizeHandlers();
     }
   }
 }
