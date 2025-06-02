@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trestle - Hierarchical Todo List</title>
     <link rel="stylesheet" href="css/trestle.css">
+    <link rel="stylesheet" href="css/right-panel.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <meta name="description" content="Trestle - A hierarchical todo list with SPARQL backend">
 </head>
 
@@ -44,48 +46,16 @@
             <ul>
                 <li><button id="mobileaaveButton">Save</button></li>
                 <li><button id="mobileAddButton">Add Root Item</button></li>
-                <li><button id="mobileShortcutsButton">Shortcuts</button></li>
-                <li><button id="mobileConsoleButton">Console</button></li>
+                <li><button id="mobileShortcutsButton" data-view="shortcuts">Shortcuts</button></li>
+                <li><button id="mobileConsoleButton" data-view="console">
+                  Console
+                  <span class="notification-badge hidden"></span>
+                </button></li>
             </ul>
         </div>
     </div>
 
-    <!-- Right Panel -->
-    <div id="right-panel" class="right-panel hidden">
-        <div class="panel-header">
-            <h3 id="panel-title">Panel</h3>
-            <div class="panel-actions">
-                <button id="clear-console" class="panel-action-button" aria-label="Clear console" title="Clear console">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 6h18"/>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                    </svg>
-                </button>
-                <button id="close-panel" class="close-button" aria-label="Close panel" title="Close panel">&times;</button>
-            </div>
-        </div>
-        <div class="panel-content">
-            <div id="shortcuts-content" class="panel-section">
-                <h4>Keyboard Shortcuts</h4>
-                <ul class="shortcuts-list">
-                    <li><kbd>Enter</kbd> - Edit selected item</li>
-                    <li><kbd>Tab</kbd> - Indent right</li>
-                    <li><kbd>Shift + Tab</kbd> - Indent left</li>
-                    <li><kbd>Ctrl + S</kbd> - Save changes</li>
-                    <li><kbd>Esc</kbd> - Cancel editing/Close panel</li>
-                </ul>
-            </div>
-            <div id="console-content" class="panel-section hidden">
-                <div id="console-output" class="console-output"></div>
-                <div class="console-empty-state">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                    </svg>
-                    <p>Console output will appear here</p>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Right Panel will be inserted here by JavaScript -->
 
     <div id="shortcuts-text" class="text-box hidden">
         <h3>Keyboard Shortcuts</h3>
@@ -106,6 +76,70 @@
                 <div id="trestle-root" class="ts-root"></div>
             </div>
         </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div id="right-panel" class="hidden" aria-labelledby="panel-title" role="complementary">
+        <!-- Panel Header -->
+        <div class="panel-header">
+            <h2 id="panel-title">Console</h2>
+            <button id="close-panel" class="panel-close" title="Close panel" aria-label="Close panel">
+                &times;
+            </button>
+        </div>
+        
+        <!-- Panel Tabs -->
+        <div class="panel-tabs">
+            <button class="tab-button active" data-view="console" aria-selected="true" aria-controls="console-content">
+                Console
+            </button>
+            <button class="tab-button" data-view="shortcuts" aria-selected="false" aria-controls="shortcuts-content">
+                Shortcuts
+            </button>
+        </div>
+        
+        <!-- Panel Content -->
+        <div class="panel-content">
+            <!-- Console Panel -->
+            <div id="console-content" class="panel-section active" role="tabpanel" aria-labelledby="console-tab">
+                <div class="console-header">
+                    <div class="log-level-selector">
+                        <label for="log-level">Log Level:</label>
+                        <select id="log-level">
+                            <option value="trace">Trace</option>
+                            <option value="debug" selected>Debug</option>
+                            <option value="info">Info</option>
+                            <option value="warn">Warn</option>
+                            <option value="error">Error</option>
+                            <option value="silent">Silent</option>
+                        </select>
+                    </div>
+                    <div class="console-actions">
+                        <button id="clear-console" class="console-button" title="Clear console" aria-label="Clear console">
+                            <i class="icon-clear">🗑️</i>
+                            <span>Clear</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="console-output" class="console-output" aria-live="polite" aria-atomic="false">
+                    <div class="console-empty-state">
+                        <i class="icon-terminal">🖥️</i>
+                        <p>Console is empty</p>
+                        <p class="hint">Events and logs will appear here</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Shortcuts Panel -->
+            <div id="shortcuts-content" class="panel-section" role="tabpanel" aria-labelledby="shortcuts-tab" hidden>
+                <div class="shortcuts-list">
+                    <!-- Shortcuts will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Resize Handle -->
+        <div class="resize-handle" aria-hidden="true"></div>
     </div>
 
     <div id="card" class="hidden">

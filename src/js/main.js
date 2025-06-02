@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('TrestleController initialized')
 
     // Set up UI event listeners
-    setupUIListeners(controller)
+    setupUIListeners(controller, eventBus)
 
     // Initialize the application
     controller.initialize()
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
  * Sets up UI event listeners
  * @param {TrestleController} controller - The controller instance
  */
-function setupUIListeners(controller) {
+function setupUIListeners(controller, eventBus) {
     // Button elements
     const saveButton = document.getElementById('saveButton')
     const mobileaaveButton = document.getElementById('mobileaaveButton')
@@ -100,22 +100,27 @@ function setupUIListeners(controller) {
         })
     }
 
-    // Shortcuts buttons
+    // Shortcuts and Console buttons
+    const handlePanelButtonClick = (eventBus, view) => {
+        // Emit an event to toggle the right panel with the specified view
+        eventBus.emit('rightpanel:toggle', { view });
+        menuBox.classList.add('hidden');
+    };
+
+    // Desktop shortcuts button (if exists)
     if (shortcutsButton) {
-        shortcutsButton.addEventListener('click', () => {
-            if (shortcutsText) {
-                shortcutsText.classList.toggle('hidden')
-            }
-        })
+        shortcutsButton.addEventListener('click', () => handlePanelButtonClick(eventBus, 'shortcuts'));
     }
 
+    // Mobile shortcuts button
     if (mobileShortcutsButton) {
-        mobileShortcutsButton.addEventListener('click', () => {
-            if (shortcutsText) {
-                shortcutsText.classList.toggle('hidden')
-                menuBox.classList.add('hidden')
-            }
-        })
+        mobileShortcutsButton.addEventListener('click', () => handlePanelButtonClick(eventBus, 'shortcuts'));
+    }
+
+    // Mobile console button
+    const mobileConsoleButton = document.getElementById('mobileConsoleButton');
+    if (mobileConsoleButton) {
+        mobileConsoleButton.addEventListener('click', () => handlePanelButtonClick(eventBus, 'console'));
     }
 
     // Mobile menu (handled by HamburgerMenu component)

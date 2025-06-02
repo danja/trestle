@@ -19,16 +19,40 @@ export default class TrestleView {
         // Initialize component instances
         this.cardDetail = new CardDetail(eventBus);
         this.contextMenu = new ContextMenu(eventBus);
+        
+        // Initialize RightPanel after a short delay to ensure DOM is ready
+        const initRightPanel = () => {
+            console.log('[TrestleView] Initializing RightPanel...');
+            try {
+                this.hamburgerMenu = new HamburgerMenu(document.getElementById('header-outer'), eventBus);
+                this.rightPanel = new RightPanel(eventBus);
+                console.log('[TrestleView] RightPanel initialized successfully');
+                
+                // Verify RightPanel initialization
+                if (this.rightPanel) {
+                    console.log('[TrestleView] RightPanel instance:', this.rightPanel);
+                    
+                    // Add a test log to verify event logging
+                    setTimeout(() => {
+                        console.log('[TrestleView] Sending test event to RightPanel');
+                        eventBus.emit('test:rightpanel', { message: 'Test event from TrestleView' });
+                    }, 1000);
+                } else {
+                    console.error('[TrestleView] Failed to initialize RightPanel');
+                }
+            } catch (error) {
+                console.error('[TrestleView] Error initializing RightPanel:', error);
+            }
+        };
+        
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
-                this.hamburgerMenu = new HamburgerMenu(document.getElementById('header-outer'), eventBus);
-                // Initialize RightPanel after DOM is loaded
-                this.rightPanel = new RightPanel(eventBus);
+                console.log('[TrestleView] DOMContentLoaded - Initializing components');
+                setTimeout(initRightPanel, 100); // Small delay to ensure all elements are rendered
             });
         } else {
-            this.hamburgerMenu = new HamburgerMenu(document.getElementById('header-outer'), eventBus);
-            // Initialize RightPanel immediately
-            this.rightPanel = new RightPanel(eventBus);
+            console.log('[TrestleView] DOM already loaded - Initializing components');
+            setTimeout(initRightPanel, 100); // Small delay to ensure all elements are rendered
         }
         this.nodeSelector = null; // Will be initialized after DOM is populated
         this.inlineEditor = null; // Will be initialized after DOM is populated

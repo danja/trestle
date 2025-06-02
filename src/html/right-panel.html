@@ -1,0 +1,68 @@
+<!-- Right Panel Container -->
+<div id="right-panel" class="hidden" aria-labelledby="panel-title" role="complementary">
+  <!-- Panel Header -->
+  <div class="panel-header">
+    <h2 id="panel-title">Console</h2>
+    <button id="close-panel" class="panel-close" title="Close panel" aria-label="Close panel">
+      &times;
+    </button>
+  </div>
+  
+  <!-- Panel Tabs -->
+  <div class="panel-tabs">
+    <button class="tab-button active" data-view="console" aria-selected="true" aria-controls="console-content">
+      Console
+    </button>
+    <button class="tab-button" data-view="shortcuts" aria-selected="false" aria-controls="shortcuts-content">
+      Shortcuts
+    </button>
+  </div>
+  
+  <!-- Panel Content -->
+  <div class="panel-content">
+    <!-- Console Panel -->
+    <div id="console-content" class="panel-section active" role="tabpanel" aria-labelledby="console-tab">
+      <div class="console-header">
+        <div class="log-level-selector">
+          <label for="log-level">Log Level:</label>
+          <select id="log-level">
+            <option value="trace">Trace</option>
+            <option value="debug" selected>Debug</option>
+            <option value="info">Info</option>
+            <option value="warn">Warn</option>
+            <option value="error">Error</option>
+            <option value="silent">Silent</option>
+          </select>
+        </div>
+        <div class="console-actions">
+          <button id="clear-console" class="console-button" title="Clear console" aria-label="Clear console">
+            <i class="icon-clear"></i>
+            <span>Clear</span>
+          </button>
+        </div>
+      </div>
+      <div id="console-output" class="console-output" aria-live="polite" aria-atomic="false">
+        <div class="console-empty-state">
+          <i class="icon-terminal"></i>
+          <p>Console is empty</p>
+          <p class="hint">Events and logs will appear here</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Shortcuts Panel -->
+    <div id="shortcuts-content" class="panel-section" role="tabpanel" aria-labelledby="shortcuts-tab" hidden>
+      <div class="shortcuts-list">
+        <!-- Shortcuts will be populated by JavaScript -->
+      </div>
+    </div>
+  </div>
+  
+  <!-- Resize Handle -->
+  <div class="resize-handle" aria-hidden="true"></div>
+</div>
+
+<!-- Mobile Console Button (positioned elsewhere in the UI) -->
+<button id="mobileConsoleButton" class="mobile-console-button" title="Toggle console" aria-label="Toggle console">
+  <i class="icon-terminal"></i>
+</button>
