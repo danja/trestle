@@ -7,6 +7,7 @@ import { InlineEditor } from './components/InlineEditor.js';
 import { NodeSelector } from './components/NodeSelector.js';
 import { HamburgerMenu } from './components/HamburgerMenu.js';
 import { Breadcrumb } from './components/Breadcrumb.js'; // [CASCADE] Imported Breadcrumb component
+import { RightPanel } from './components/RightPanel.js'; // Import RightPanel component
 
 export default class TrestleView {
     constructor(rootElement, eventBus) {
@@ -21,9 +22,13 @@ export default class TrestleView {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
                 this.hamburgerMenu = new HamburgerMenu(document.getElementById('header-outer'), eventBus);
+                // Initialize RightPanel after DOM is loaded
+                this.rightPanel = new RightPanel(eventBus);
             });
         } else {
             this.hamburgerMenu = new HamburgerMenu(document.getElementById('header-outer'), eventBus);
+            // Initialize RightPanel immediately
+            this.rightPanel = new RightPanel(eventBus);
         }
         this.nodeSelector = null; // Will be initialized after DOM is populated
         this.inlineEditor = null; // Will be initialized after DOM is populated
@@ -97,58 +102,75 @@ export default class TrestleView {
      */
     setupEventListeners() {
         // Model event listeners
-        // [CASCADE] Set this.allNodes from event data before rendering the tree
         this.eventBus.on('model:loaded', (data) => {
-            this.allNodes = {};
+            console.log('[TrestleView] Model loaded:', data);
             if (data && data.nodes) {
-                data.nodes.forEach(node => { this.allNodes[node.id] = node; });
+                this.allNodes = {};
+                for (const node of data.nodes) {
+                    this.allNodes[node.id] = node;
+                }
+                this.renderTree();
+                this.updateBreadcrumb();
             }
-            this.renderTree();
         });
+        
         this.eventBus.on('model:created', (data) => {
-            this.allNodes = {};
+            console.log('[TrestleView] Model created:', data);
             if (data && data.nodes) {
-                data.nodes.forEach(node => { this.allNodes[node.id] = node; });
+                this.allNodes = {};
+                for (const node of data.nodes) {
+                    this.allNodes[node.id] = node;
+                }
+                this.renderTree();
+                this.updateBreadcrumb();
             }
-            this.renderTree();
         });
+        
+        // Node events
         this.eventBus.on('node:added', this.handleNodeAdded.bind(this));
         this.eventBus.on('node:updated', this.handleNodeUpdated.bind(this));
         this.eventBus.on('node:deleted', this.handleNodeDeleted.bind(this));
+        
+        // Add event listeners for node movement
         this.eventBus.on('view:nodeIndented', this.handleNodeIndented.bind(this));
         this.eventBus.on('view:nodeOutdented', this.handleNodeOutdented.bind(this));
-
-        // View event listeners
+        
+        // View event listeners for node selection and navigation
         this.eventBus.on('view:selectNode', (data) => {
             if (this.nodeSelector) {
                 this.nodeSelector.selectNode(data.nodeId);
             }
         });
-
+        
         this.eventBus.on('view:navigateUp', (data) => {
             if (this.nodeSelector) {
                 this.nodeSelector.navigateUp(data.nodeId);
             }
         });
-
+        
         this.eventBus.on('view:navigateDown', (data) => {
             if (this.nodeSelector) {
                 this.nodeSelector.navigateDown(data.nodeId);
             }
         });
-
+        
         this.eventBus.on('view:moveNodeUp', (data) => {
             if (this.nodeSelector) {
                 this.nodeSelector.moveNodeUp(data.nodeId);
             }
         });
-
+        
         this.eventBus.on('view:moveNodeDown', (data) => {
             if (this.nodeSelector) {
                 this.nodeSelector.moveNodeDown(data.nodeId);
             }
         });
+        
+        // Log events for debugging
+        console.log('[TrestleView] Event handlers set up');
     }
+
+
 
     /**
      * Render the tree from model data

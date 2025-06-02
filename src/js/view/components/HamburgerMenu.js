@@ -42,12 +42,20 @@ export class HamburgerMenu {
     
     // Close menu when clicking outside
     document.addEventListener('click', (event) => {
+      // Don't do anything if the click is inside the right panel
+      const rightPanel = document.getElementById('right-panel');
+      if (rightPanel && rightPanel.contains(event.target)) {
+        console.log('[HamburgerMenu] Click inside right panel, ignoring');
+        return;
+      }
+      
       if (this.isOpen && 
           !this.menuBox.contains(event.target) && 
           !this.hamburgerButton.contains(event.target)) {
+        console.log('[HamburgerMenu] Click outside menu, closing');
         this.closeMenu();
       }
-    });
+    }, true); // Use capture phase to catch event early
     
     // Listen for ESC key to close menu
     document.addEventListener('keydown', (event) => {

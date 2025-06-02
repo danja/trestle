@@ -11,6 +11,7 @@ import { NodeSelector } from './components/NodeSelector.js';
 import { SearchBar } from './components/SearchBar.js';
 import { Favorites } from './components/Favorites.js';
 import { OptionsMenu } from './components/OptionsMenu.js';
+import { RightPanel } from './components/RightPanel.js';
 
 export default class TrestleView {
     constructor(rootElement, eventBus) {
@@ -25,6 +26,7 @@ export default class TrestleView {
         this.contextMenu = new ContextMenu(eventBus);
         this.hamburgerMenu = new HamburgerMenu(document.body, eventBus);
         this.navigationControls = new NavigationControls(document.body, eventBus);
+        this.rightPanel = new RightPanel(eventBus);
         
         // Initialize toolbar components
         const toolbarElement = document.querySelector('.top-navbar.toolbar');

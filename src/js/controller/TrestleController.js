@@ -19,19 +19,26 @@ export class TrestleController {
      * Initialize the controller
      */
     initialize() {
-        const savedOutline = this.model.loadOutline()
+        console.log('[TrestleController] Initializing controller');
+        const savedOutline = this.model.loadOutline();
+        console.log('[TrestleController] Saved outline:', savedOutline);
 
-        if (savedOutline) {
-            this.eventBus.emit('model:loaded', savedOutline)
+        if (savedOutline && savedOutline.nodes && savedOutline.nodes.length > 0) {
+            console.log('[TrestleController] Loading saved outline with nodes:', savedOutline.nodes.length);
+            this.eventBus.emit('model:loaded', savedOutline);
         } else {
-            const rootNode = this.model.addNode(null, 'Root Node', 0)
-            this.eventBus.emit('model:created', {
-                nodes: [rootNode]
-            })
-            this.view.renderTree({ nodes: [rootNode] })
+            console.log('[TrestleController] Creating new outline');
+            // Create a root node if none exists
+            const rootNode = this.model.addNode(null, 'Root Node', 0);
+            
+            // Add a sample child node to make the tree visible
+            const childNode = this.model.addNode(rootNode.id, 'Sample Item', 0);
+            
+            const nodes = Array.from(this.model.nodes.values());
+            console.log('[TrestleController] Created new nodes:', nodes);
+            
+            this.eventBus.emit('model:created', { nodes });
         }
-
-        this.view.renderTree({ nodes: Array.from(this.model.nodes.values()) }) // Explicitly refresh the view
     }
 
     /**
