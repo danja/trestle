@@ -17,6 +17,34 @@
   overflow: hidden;
 }
 
+/* Mobile styles for right panel */
+@media (max-width: 768px) {
+  #right-panel {
+    position: static;
+    width: 100%;
+    height: auto;
+    max-height: 50vh;
+    transform: none;
+    opacity: 1;
+    display: none;
+    box-shadow: none;
+    border-top: 1px solid #444;
+    margin-top: 10px;
+  }
+
+  #right-panel.visible {
+    display: flex;
+  }
+
+  #right-panel.hidden {
+    display: none;
+  }
+
+  .panel-content {
+    max-height: 40vh;
+  }
+}
+
 #right-panel.visible {
   transform: translateX(0);
   opacity: 1;
