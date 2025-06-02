@@ -2,6 +2,7 @@
  * RightPanel component
  * Handles the right panel that shows shortcuts and console output
  */
+import log from 'loglevel';
 export class RightPanel {
   /**
    * Create a new RightPanel
@@ -38,7 +39,11 @@ export class RightPanel {
   }
 
   constructor(eventBus) {
-    console.log('[RightPanel] Initializing RightPanel');
+    // Initialize logger
+    this.logger = log.getLogger('RightPanel');
+    this.logger.setLevel(log.levels.INFO); // Default level, can be changed with setLogLevel()
+    
+    this.logger.info('Initializing RightPanel');
     this.eventBus = eventBus;
     
     // Get DOM elements
@@ -486,15 +491,16 @@ export class RightPanel {
     const originalEmit = this.eventBus.emit;
     const self = this;
     
-    // Override the emit method to log all events
+    // Override the emit method to log all events with loglevel
     this.eventBus.emit = function(eventName, ...args) {
       // Call the original emit method
       const result = originalEmit.apply(this, [eventName, ...args]);
       
       // Don't log our own events to prevent infinite loops
       if (!eventName.startsWith('console:') && !trestleEvents.includes(eventName)) {
+        // Use debug level for all events by default
         const message = `Event: ${eventName} ${args.length > 0 ? '\n' + self.safeStringify(args) : ''}`;
-        self.logToConsole(message, 'event');
+        self.logToConsole(message, 'debug');
       }
       
       return result;
@@ -504,13 +510,20 @@ export class RightPanel {
   /**
    * Log Trestle-specific events with custom formatting
    */
+  /**
+   * Handle Trestle-specific events with appropriate log levels
+   * @param {string} eventName - The name of the event
+   * @param {Object} data - The event data
+   */
   logTrestleEvent(eventName, data) {
     let message = '';
+    let logLevel = 'info'; // Default log level
     
     switch (eventName) {
       case 'node:selected':
         message = `Selected node: ${data?.id || 'unknown'}`;
         if (data?.title) message += ` (${data.title})`;
+        logLevel = 'debug'; // Debug level for selection events
         break;
         
       case 'node:updated':
@@ -520,54 +533,91 @@ export class RightPanel {
             .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
             .join(', ');
         }
+        logLevel = 'info';
         break;
         
       case 'node:created':
         message = `Created node: ${data?.id || 'unknown'}`;
         if (data?.title) message += ` (${data.title})`;
+        logLevel = 'info';
         break;
         
       case 'node:deleted':
         message = `Deleted node: ${data?.id || 'unknown'}`;
         if (data?.title) message += ` (${data.title})`;
+        logLevel = 'warn'; // Warn level for deletion events
         break;
         
       case 'tree:updated':
         message = 'Tree structure updated';
         if (data?.nodeCount) message += ` (${data.nodeCount} nodes)`;
+        logLevel = 'debug'; // Debug level for tree updates
         break;
         
       case 'breadcrumb:update':
         message = 'Breadcrumb updated';
         if (data?.path) message += `: ${data.path.map(n => n.title).join(' > ')}`;
+        logLevel = 'debug'; // Debug level for breadcrumb updates
         break;
         
       case 'search:results':
         message = `Search returned ${data?.results?.length || 0} results`;
         if (data?.query) message += ` for "${data.query}"`;
+        logLevel = 'debug'; // Debug level for search results
         break;
         
       case 'favorites:updated':
         message = `Favorites updated (${data?.count || 0} items)`;
+        logLevel = 'debug'; // Debug level for favorites updates
         break;
         
       case 'history:changed':
         message = `Navigation history updated (${data?.position || 0}/${data?.length || 0})`;
+        logLevel = 'debug'; // Debug level for history changes
         break;
         
       case 'error':
         message = `Error: ${data?.message || 'Unknown error'}`;
         if (data?.stack) message += `\n${data.stack}`;
+        logLevel = 'error'; // Error level for errors
         break;
         
       default:
         message = `Event: ${eventName}`;
         if (data) message += '\n' + this.safeStringify(data);
+        logLevel = 'debug'; // Debug level for unhandled events
     }
     
-    this.logToConsole(message, 'info');
+    // Log the message with the appropriate level
+    this.logToConsole(message, logLevel);
   }
   
+  /**
+   * Set the logging level for the console
+   * @param {string} level - The log level to set ('trace', 'debug', 'info', 'warn', 'error', 'silent')
+   */
+  setLogLevel(level) {
+    const levelMap = {
+      'trace': log.levels.TRACE,
+      'debug': log.levels.DEBUG,
+      'info': log.levels.INFO,
+      'warn': log.levels.WARN,
+      'error': log.levels.ERROR,
+      'silent': log.levels.SILENT
+    };
+    
+    const newLevel = levelMap[level.toLowerCase()];
+    
+    if (newLevel !== undefined) {
+      this.logger.setLevel(newLevel);
+      this.logToConsole(`Log level set to: ${level.toUpperCase()}`, 'info', true);
+    } else {
+      this.logger.warn(`Invalid log level: ${level}. Valid levels are: ${Object.keys(levelMap).join(', ')}`);
+    }
+    
+    return this.logger.getLevel();
+  }
+
   /**
    * Safely stringify data, handling circular references and errors
    */
@@ -671,15 +721,52 @@ export class RightPanel {
     });
   }
   
-  logToConsole(message, type = 'log') {
+  /**
+   * Log a message to the console output with loglevel filtering
+   * @param {string} message - The message to log
+   * @param {string} type - The type of log ('log', 'error', 'warn', 'info', 'debug')
+   * @param {boolean} [force=false] - If true, bypass log level filtering
+   */
+  logToConsole(message, type = 'log', force = false) {
     if (!this.consoleOutput) return;
     
+    // Map log types to loglevel methods
+    const logLevels = {
+      'error': log.levels.ERROR,
+      'warn': log.levels.WARN,
+      'info': log.levels.INFO,
+      'debug': log.levels.DEBUG,
+      'trace': log.levels.TRACE,
+      'log': log.levels.INFO
+    };
+    
+    const currentLevel = this.logger.getLevel();
+    const messageLevel = logLevels[type] || log.levels.INFO;
+    
+    // Skip if message level is below current log level and not forced
+    if (!force && currentLevel > messageLevel) {
+      return;
+    }
+    
+    // Log to browser console using the appropriate loglevel method
+    if (type === 'error') {
+      this.logger.error(message);
+    } else if (type === 'warn') {
+      this.logger.warn(message);
+    } else if (type === 'info' || type === 'log') {
+      this.logger.info(message);
+    } else if (type === 'debug') {
+      this.logger.debug(message);
+    } else if (type === 'trace') {
+      this.logger.trace(message);
+    }
+    
+    // Format and display in the UI console
     const timestamp = new Date().toLocaleTimeString();
     const logEntry = document.createElement('div');
     logEntry.className = `console-entry console-${type}`;
     
     try {
-      // Format the message with timestamp and type
       let formattedMessage;
       this.seen = new WeakSet(); // Reset for each message
       
