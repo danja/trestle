@@ -208,25 +208,22 @@ export class RightPanel {
         console.warn('[RightPanel] Console button not found');
       }
       
-      // Close panel when clicking outside
+      // Only close panel when clicking the close button or toggling the same view
       document.addEventListener('click', (event) => {
         if (!this.panel) {
           console.warn('[RightPanel] Panel element not found');
           return;
         }
         
-        const isClickInside = this.panel.contains(event.target);
-        const isMenuButton = event.target.matches('#mobileShortcutsButton, #mobileConsoleButton, #mobileShortcutsButton *, #mobileConsoleButton *');
+        const isCloseButton = event.target.closest('#close-panel');
+        const isConsoleButton = event.target.closest('#mobileConsoleButton');
         
-        console.log('[RightPanel] Document click:', {
-          target: event.target,
-          isClickInside,
-          isMenuButton,
-          isVisible: this.isVisible()
-        });
-        
-        if (this.isVisible() && !isClickInside && !isMenuButton) {
-          console.log('[RightPanel] Click outside detected, hiding panel');
+        if (isCloseButton) {
+          console.log('[RightPanel] Close button clicked, hiding panel');
+          this.hide();
+        } else if (isConsoleButton && this.currentView === 'console') {
+          // Toggle console off if clicking the console button while console is open
+          console.log('[RightPanel] Console button clicked while console is open, hiding panel');
           this.hide();
         }
       }, true); // Use capture phase to ensure we catch the event
