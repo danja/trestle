@@ -5,6 +5,7 @@ import TrestleView from './view/index.js'
 import { TrestleController } from './controller/TrestleController.js'
 import { Config } from './config.js'
 import { EventBus } from 'evb'
+import { EventLogger } from './utils/EventLogger.js'
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM fully loaded and parsed')
@@ -12,6 +13,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize the event bus
     const eventBus = new EventBus()
     console.log('EventBus initialized')
+    
+    // Initialize event logger
+    const eventLogger = new EventLogger(eventBus, {
+      loggerName: 'Trestle:EventLogger',
+      logLevel: 'debug',
+      ignorePatterns: [
+        // Ignore high-frequency events that would clutter the logs
+        /^mousemove|mousedown|mouseup|click|scroll|resize|input|keydown|keyup|keypress$/,
+        // Ignore internal events that might cause noise
+        /^console:/,
+        'trestle:rendering',
+        'trestle:rendered',
+        'trestle:updating',
+        'trestle:updated'
+      ]
+    });
+    console.log('EventLogger initialized');
 
     // Initialize the model, view, and controller
     const model = new TrestleRDFModel(Config.SPARQL_ENDPOINT, Config.BASE_URI, eventBus)
