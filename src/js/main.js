@@ -67,7 +67,7 @@ function setupUIListeners(controller, eventBus) {
     const shortcutsButton = document.getElementById('shortcutsButton')
     const mobileShortcutsButton = document.getElementById('mobileShortcutsButton')
     const cardClose = document.getElementById('card-close')
-    const shortcutsText = document.getElementById('shortcuts-text')
+    // Removed shortcutsText: shortcuts now shown in right panel only
     const hamburgerButton = document.getElementById('hamburgerButton')
     const menuBox = document.getElementById('menu-box')
 

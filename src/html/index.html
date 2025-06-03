@@ -57,18 +57,7 @@
 
     <!-- Right Panel will be inserted here by JavaScript -->
 
-    <div id="shortcuts-text" class="text-box hidden">
-        <h3>Keyboard Shortcuts</h3>
-        <ul>
-            <li><strong>Enter</strong> New item</li>
-            <li><strong>Shift+Enter</strong> Line break</li>
-            <li><strong>Tab</strong> Indent</li>
-            <li><strong>Shift+Tab</strong> Outdent</li>
-            <li><strong>Up/Down</strong> Navigate</li>
-            <li><strong>Ctrl+↑/↓</strong> Move item</li>
-            <li><strong>Alt+Click</strong> Edit details</li>
-        </ul>
-    </div>
+    <!-- Removed shortcuts-text: shortcuts now shown in right panel only -->
 
     <div id="container">
         <div class="page">
@@ -88,15 +77,7 @@
             </button>
         </div>
         
-        <!-- Panel Tabs -->
-        <div class="panel-tabs">
-            <button class="tab-button active" data-view="console" aria-selected="true" aria-controls="console-content">
-                Console
-            </button>
-            <button class="tab-button" data-view="shortcuts" aria-selected="false" aria-controls="shortcuts-content">
-                Shortcuts
-            </button>
-        </div>
+        <!-- Panel Tabs removed: only show current view title in header -->
         
         <!-- Panel Content -->
         <div class="panel-content">

@@ -16,10 +16,10 @@ export class RightPanel {
     this.logger = log.getLogger('RightPanel');
     this.logger.setLevel(log.levels.DEBUG); // Set to DEBUG for more detailed logs
     this.eventBus = eventBus;
-    
+
     // Expose instance globally for direct access
     window.rightPanel = this;
-    
+
     this.logger.debug('RightPanel constructor called');
 
     // Panel state
@@ -83,10 +83,10 @@ export class RightPanel {
       this.panel.className = ''; // Clear all classes
       this.panel.id = 'right-panel'; // Ensure ID is set
       this.panel.style.cssText = ''; // Reset all inline styles
-      
+
       // Add base classes
       this.panel.classList.add('right-panel', 'hidden');
-      
+
       // Set basic styles
       this.panel.style.display = 'none'; // Start hidden
       this.panel.style.flexDirection = 'column';
@@ -102,21 +102,21 @@ export class RightPanel {
       this.panel.style.transition = 'transform 0.3s ease-in-out, opacity 0.3s ease-in-out';
       this.panel.style.opacity = '0';
       this.panel.style.transform = 'translateX(100%)';
-      
+
       // Set ARIA attributes
       this.panel.setAttribute('aria-labelledby', 'panel-title');
       this.panel.setAttribute('role', 'complementary');
       this.panel.setAttribute('aria-hidden', 'true');
-      
+
       // Set up event listeners first
       this.setupEventListeners();
-      
+
       // Initialize child panels
       this.initializePanels();
-      
+
       // Initialize tab states after panels are set up
       this.initializeTabs();
-      
+
       this.logger.info('RightPanel initialization complete');
     } catch (error) {
       this.logger.error('Error initializing RightPanel:', error);
@@ -133,9 +133,9 @@ export class RightPanel {
       // If no view specified, toggle between console and shortcuts
       view = this.currentView === 'console' ? 'shortcuts' : 'console';
     }
-    
+
     this.showView(view);
-    
+
     // Update tab buttons
     document.querySelectorAll('.tab-button').forEach(button => {
       const isActive = button.getAttribute('data-view') === view;
@@ -155,14 +155,7 @@ export class RightPanel {
       });
     }
 
-    // Set up tab buttons
-    const tabButtons = document.querySelectorAll('.tab-button');
-    tabButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const view = button.getAttribute('data-view');
-        this.toggleView(view);
-      });
-    });
+    // Remove tab button event listeners: tabs are no longer shown
 
     // Set up close button
     if (this.closeButton) {
@@ -208,7 +201,7 @@ export class RightPanel {
         this.logger.error('Error handling rightpanel:toggle event:', error);
       }
     });
-    
+
     // Log all events for debugging
     this.eventBus.on('*', (data, event) => {
       if (event && event.type && !event.type.startsWith('rightpanel:')) {
@@ -224,7 +217,7 @@ export class RightPanel {
     try {
       // Make sure we're using elements within the right panel
       const panelContent = this.panel?.querySelector('.panel-content');
-      
+
       if (!panelContent) {
         this.logger.error('Panel content container not found');
         return;
@@ -263,9 +256,9 @@ export class RightPanel {
       this.logger.warn('Cannot show panel: panel element not found');
       return;
     }
-    
+
     this.logger.debug(`Showing panel with view: ${view}`);
-    
+
     // First make sure the panel is visible
     if (this.panel.classList.contains('hidden')) {
       this.panel.classList.remove('hidden');
@@ -274,13 +267,13 @@ export class RightPanel {
       this.panel.style.transform = 'translateX(0)';
       this.panel.setAttribute('aria-hidden', 'false');
     }
-    
+
     // Update the current view and show the requested view
     if (view) {
       this.currentView = view;
       this.showView(view);
     }
-    
+
     // Add a small delay before focusing to ensure the panel is visible
     setTimeout(() => {
       const firstFocusable = this.panel.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
@@ -288,7 +281,7 @@ export class RightPanel {
         firstFocusable.focus();
       }
     }, 50);
-    
+
     // Emit event that panel is shown
     this.eventBus.emit('rightpanel:shown', { view: this.currentView });
   }
@@ -303,9 +296,9 @@ export class RightPanel {
     }
 
     this.logger.debug('Hiding right panel');
-    
+
     const isMobile = window.innerWidth <= 768;
-    
+
     if (isMobile) {
       // For mobile, just hide it directly
       this.panel.classList.add('hidden');
@@ -322,7 +315,7 @@ export class RightPanel {
       this.panel.style.opacity = '0';
       this.panel.style.visibility = 'hidden';
       this.panel.style.transform = 'translateX(100%)';
-      
+
       // Wait for the transition to complete before hiding the panel completely
       const onTransitionEnd = () => {
         this.panel.removeEventListener('transitionend', onTransitionEnd);
@@ -335,7 +328,7 @@ export class RightPanel {
       };
 
       this.panel.addEventListener('transitionend', onTransitionEnd, { once: true });
-      
+
       // Force reflow to ensure the transition is triggered
       void this.panel.offsetWidth;
     }
@@ -350,10 +343,10 @@ export class RightPanel {
       this.logger.warn('Cannot toggle: panel element not found');
       return;
     }
-    
+
     this.logger.debug(`Toggling panel. Current view: ${this.currentView}, Requested view: ${view}`);
     console.log(`RightPanel.toggle('${view}') called`);
-    
+
     // Get current state
     const currentState = {
       classList: Array.from(this.panel.classList),
@@ -367,37 +360,32 @@ export class RightPanel {
       hasHiddenClass: this.panel.classList.contains('hidden'),
       currentView: this.currentView
     };
-    
+
     console.log('Panel state:', currentState);
-    
-    // If panel is hidden or not visible, show it with the requested view
+
+    // If panel is hidden or not visible, always show it with the requested view
     if (currentState.hasHiddenClass || !currentState.isVisible) {
       this.logger.debug('Panel is hidden or not visible, showing with view:', view);
-      console.log('Showing panel with view:', view);
-      this.currentView = view;
-      this.showView(view);
-    } 
-    // If panel is showing a different view, switch to the requested view
+      this.show(view);
+    }
+    // If panel is showing a different view, switch to the requested view (do not hide)
     else if (view && this.currentView !== view) {
       this.logger.debug(`Switching from ${this.currentView} to ${view} view`);
-      console.log(`Switching from ${this.currentView} to ${view} view`);
-      this.currentView = view;
-      this.showView(view);
-    } 
+      this.show(view);
+    }
     // If panel is already showing the requested view, hide it
     else {
       this.logger.debug('Hiding panel');
-      console.log('Hiding panel');
       this.hide();
     }
-    
+
     // Close mobile menu if open
     const menuBox = document.getElementById('menu-box');
     if (menuBox) {
       console.log('Hiding menu box');
       menuBox.classList.add('hidden');
     }
-    
+
     // Force a reflow to ensure styles are applied
     void this.panel.offsetHeight;
   }
@@ -411,21 +399,21 @@ export class RightPanel {
       console.log('isVisible: No panel element');
       return false;
     }
-    
+
     // Check if the panel is explicitly hidden via class or style
     const isHiddenByClass = this.panel.classList.contains('hidden');
-    const isHiddenByStyle = this.panel.style.display === 'none' || 
-                          this.panel.style.opacity === '0' ||
-                          this.panel.style.visibility === 'hidden';
-    
+    const isHiddenByStyle = this.panel.style.display === 'none' ||
+      this.panel.style.opacity === '0' ||
+      this.panel.style.visibility === 'hidden';
+
     // Check if the panel is in the viewport
     const rect = this.panel.getBoundingClientRect();
-    const isInViewport = this.panel.offsetWidth > 0 && 
-                        this.panel.offsetHeight > 0 &&
-                        rect.right > 0;
-    
+    const isInViewport = this.panel.offsetWidth > 0 &&
+      this.panel.offsetHeight > 0 &&
+      rect.right > 0;
+
     const isVisible = !isHiddenByClass && !isHiddenByStyle && isInViewport;
-    
+
     console.log('isVisible check:', {
       isHiddenByClass,
       isHiddenByStyle: {
@@ -443,7 +431,7 @@ export class RightPanel {
       finalResult: isVisible,
       classList: Array.from(this.panel.classList)
     });
-    
+
     return isVisible;
   }
 
@@ -467,10 +455,10 @@ export class RightPanel {
       this.logger.warn('Cannot show view: panel element not found');
       return;
     }
-    
+
     this.logger.debug('Showing view:', view);
     console.log(`showView('${view}') called`);
-    
+
     // First, ensure the panel is visible
     console.log('Making panel visible');
     this.panel.classList.remove('hidden');
@@ -480,65 +468,40 @@ export class RightPanel {
     this.panel.style.transform = 'translateX(0)';
     this.panel.setAttribute('aria-hidden', 'false');
     document.body.classList.add('right-panel-visible');
-    
+
     // Force a reflow to ensure the panel is in the document flow
     void this.panel.offsetHeight;
-    
-    // Get all panels and tab buttons
+
+    // Get all panels
     const allPanels = Array.from(this.panel.querySelectorAll('.panel-section'));
-    const tabButtons = Array.from(this.panel.querySelectorAll('.tab-button'));
-    
-    this.logger.debug(`Found ${allPanels.length} panels and ${tabButtons.length} tab buttons`);
-    console.log(`Found ${allPanels.length} panels and ${tabButtons.length} tab buttons`);
-    
+    this.logger.debug(`Found ${allPanels.length} panels`);
     // Hide all panels first
-    console.log('Hiding all panels');
-    allPanels.forEach((panel, index) => {
-      console.log(`Hiding panel ${index}:`, {
-        id: panel.id,
-        currentDisplay: panel.style.display,
-        currentOpacity: panel.style.opacity,
-        hasActiveClass: panel.classList.contains('active')
-      });
+    allPanels.forEach((panel) => {
       panel.style.display = 'none';
       panel.style.opacity = '0';
       panel.style.visibility = 'hidden';
       panel.classList.remove('active');
     });
-    
-    // Deactivate all tab buttons
-    tabButtons.forEach(button => {
-      button.classList.remove('active');
-      button.setAttribute('aria-selected', 'false');
-    });
-    
+
     // Show the requested panel
     const targetPanel = this.panel.querySelector(`#${view}-content`);  
     if (targetPanel) {
-      console.log(`Showing panel: ${view}-content`);
       targetPanel.style.display = 'flex';
       targetPanel.style.opacity = '1';
       targetPanel.style.visibility = 'visible';
       targetPanel.classList.add('active');
-      
-      // Update the active tab button
-      const activeButton = this.panel.querySelector(`.tab-button[data-view="${view}"]`);
-      if (activeButton) {
-        activeButton.classList.add('active');
-        activeButton.setAttribute('aria-selected', 'true');
-      }
     } else {
       console.warn(`Panel not found: ${view}-content`);
     }
-    
+
     // Update the current view
     this.currentView = view;
-    
+
     // Update the panel title
     if (this.panelTitle) {
       this.panelTitle.textContent = view.charAt(0).toUpperCase() + view.slice(1);
     }
-    
+
     // Ensure the panel is in the document flow
     this.panel.style.position = 'fixed';
     this.panel.style.top = '0';
@@ -546,99 +509,29 @@ export class RightPanel {
     this.panel.style.bottom = '0';
     this.panel.style.width = '400px';
     this.panel.style.zIndex = '1000';
-    
-    tabButtons.forEach(button => {
-      button.classList.remove('active');
-      button.setAttribute('aria-selected', 'false');
-    });
-    
-    // Find and activate the selected tab and panel
-    let foundActive = false;
-    
-    // Try to find and activate the requested view
-    for (const button of tabButtons) {
-      const buttonView = button.getAttribute('data-view');
-      this.logger.debug(`Checking tab button with view: ${buttonView}, looking for: ${view}`);
-      
-      if (buttonView === view) {
-        // Activate the button
-        button.classList.add('active');
-        button.setAttribute('aria-selected', 'true');
-        this.logger.debug(`Activated tab button: ${buttonView}`);
-        
-        // Activate the corresponding panel
-        const panelId = button.getAttribute('aria-controls');
-        const panel = panelId ? this.panel.querySelector(`#${panelId}`) : null;
-        if (panel) {
-          panel.style.display = 'flex';
-          panel.style.opacity = '1';
-          panel.classList.add('active');
-          foundActive = true;
-          this.logger.debug(`Activated panel: ${panelId}`);
-          
-          // Update panel title
-          const panelTitle = this.panel.querySelector('#panel-title');
-          if (panelTitle) {
-            panelTitle.textContent = view.charAt(0).toUpperCase() + view.slice(1);
-          }
-          
-          // Ensure the panel is visible
-          if (panel.offsetParent === null) {
-            this.logger.warn(`Panel ${panelId} is not visible in the DOM`);
-          }
-        } else {
-          this.logger.warn(`Panel not found for id: ${panelId}`);
-        }
-        break; // Found our tab, no need to check others
-      }
-    }
-    
-    // If no panel was found, default to console
-    if (!foundActive) {
-      this.logger.warn(`No panel found for view: ${view}, defaulting to console`);
-      const consolePanel = this.panel.querySelector('#console-content');
-      if (consolePanel) {
-        consolePanel.style.display = 'flex';
-        consolePanel.classList.add('active');
-        this.logger.debug('Activated default console panel');
-        
-        const consoleButton = this.panel.querySelector('.tab-button[data-view="console"]');
-        if (consoleButton) {
-          consoleButton.classList.add('active');
-          consoleButton.setAttribute('aria-selected', 'true');
-          this.logger.debug('Activated console tab button');
-        } else {
-          this.logger.warn('Console tab button not found');
-        }
-        
-        view = 'console';
-      } else {
-        this.logger.error('Default console panel not found');
-      }
-    }
-    
+
     // Update the current view
     this.currentView = view;
     this.logger.debug(`Current view set to: ${this.currentView}`);
-    
+
     // Update the panel title
     if (this.panelTitle) {
       this.panelTitle.textContent = view.charAt(0).toUpperCase() + view.slice(1);
     }
-    
+
     // Update notification badge if showing console
     if (view === 'console') {
       this.unreadCount = 0;
       this.updateNotificationBadge();
     }
-    
+
     // Initialize notification badge if not exists
     if (this.consoleButton && !this.notificationBadge) {
       this.notificationBadge = document.createElement('span');
       this.notificationBadge.className = 'notification-badge hidden';
       this.consoleButton.appendChild(this.notificationBadge);
     }
-    
+
     this.logger.debug(`View updated to: ${view}`);
   }
 
@@ -668,7 +561,7 @@ export class RightPanel {
       this.updateNotificationBadge();
     }
   }
-  
+
   /**
    * Update the notification badge with the current unread count
    */
@@ -676,7 +569,7 @@ export class RightPanel {
     if (!this.notificationBadge) {
       this.notificationBadge = document.querySelector('.notification-badge');
     }
-    
+
     if (this.notificationBadge) {
       if (this.unreadCount > 0) {
         this.notificationBadge.textContent = this.unreadCount;
@@ -687,65 +580,65 @@ export class RightPanel {
       }
     }
   }
-  
+
   /**
    * Set up resize handlers for the panel
    */
   setupResizeHandlers() {
     if (!this.panel) return;
-    
+
     const handleMouseDown = (e) => {
       if (e.button !== 0) return; // Only left mouse button
-      
+
       this.isResizing = true;
       this.lastDownX = e.clientX;
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
-      
+
       e.preventDefault();
       e.stopPropagation();
     };
-    
+
     const handleMouseMove = (e) => {
       if (!this.isResizing) return;
-      
+
       const deltaX = this.lastDownX - e.clientX;
       this.lastDownX = e.clientX;
-      
+
       const newWidth = this.panel.offsetWidth + deltaX;
       const minWidth = 300;
       const maxWidth = window.innerWidth * 0.7;
-      
+
       if (newWidth >= minWidth && newWidth <= maxWidth) {
         this.panel.style.width = `${newWidth}px`;
       }
-      
+
       e.preventDefault();
       e.stopPropagation();
     };
-    
+
     const handleMouseUp = () => {
       if (!this.isResizing) return;
-      
+
       this.isResizing = false;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
-      
+
       // Save the width for next time
       if (this.panel) {
         this.startWidth = this.panel.offsetWidth;
       }
     };
-    
+
     // Add event listeners
     const resizeHandle = this.panel.querySelector('.resize-handle');
     if (resizeHandle) {
       resizeHandle.addEventListener('mousedown', handleMouseDown);
     }
-    
+
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    
+
     // Store cleanup function
     this.cleanupResizeHandlers = () => {
       if (resizeHandle) {
@@ -755,7 +648,7 @@ export class RightPanel {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }
-  
+
   /**
    * Clean up event listeners when the panel is destroyed
    */
@@ -763,7 +656,7 @@ export class RightPanel {
     if (this.cleanupResizeHandlers) {
       this.cleanupResizeHandlers();
     }
-    
+
     if (this.panel) {
       this.panel.removeEventListener('transitionend', this.onTransitionEnd);
     }
@@ -837,27 +730,27 @@ export class RightPanel {
    */
   initializeTabs() {
     this.logger.debug('Initializing tab states');
-    
+
     // First, hide all panels and deactivate all buttons
     const allPanels = this.panel.querySelectorAll('.panel-section');
     const tabButtons = this.panel.querySelectorAll('.tab-button');
-    
+
     allPanels.forEach(panel => {
       panel.classList.remove('active');
       panel.style.display = 'none';
       panel.style.opacity = '0';
       panel.style.visibility = 'hidden';
     });
-    
+
     tabButtons.forEach(button => {
       // Remove any existing click handlers to prevent duplicates
       const newButton = button.cloneNode(true);
       button.parentNode.replaceChild(newButton, button);
-      
+
       // Set initial state
       const view = newButton.getAttribute('data-view');
       const isActive = view === 'console'; // Only console is active by default
-      
+
       if (isActive) {
         newButton.classList.add('active');
         newButton.setAttribute('aria-selected', 'true');
@@ -865,7 +758,7 @@ export class RightPanel {
         newButton.classList.remove('active');
         newButton.setAttribute('aria-selected', 'false');
       }
-      
+
       // Add click handler
       newButton.addEventListener('click', (e) => {
         e.preventDefault();
@@ -876,7 +769,7 @@ export class RightPanel {
         }
       });
     });
-    
+
     // Initialize the console panel but don't show it yet
     const consolePanel = this.panel.querySelector('#console-content');
     if (consolePanel) {
@@ -885,7 +778,7 @@ export class RightPanel {
       consolePanel.style.opacity = '1';
       consolePanel.classList.add('active');
     }
-    
+
     // Hide the panel initially
     this.hide();
   }
