@@ -1,0 +1,26 @@
+/* Shortcuts Panel */
+.shortcuts-list {
+    list-style: none;
+    padding: 0;
+}
+
+.shortcuts-list li {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.shortcuts-list kbd {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+    color: #333;
+    display: inline-block;
+    font-family: monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+    padding: 1px 6px;
+    margin-right: 10px;
+    white-space: nowrap;
+}

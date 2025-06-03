@@ -1,0 +1,14 @@
+:root {
+    --primary-color: #3a7ca5;
+    --secondary-color: #555;
+    --highlight-color: #f5f7fa;
+    --background-color: #fff;
+    --border-color: #eaeaea;
+    --selected-bg: #e1f5fe;
+    --selected-border: #4fc3f7;
+    --highlight-bg: #f5f5f5;
+    --card-header-bg: #3a7ca5;
+    --card-header-color: #fff;
+    --hover-bg: rgba(0, 0, 0, 0.03);
+    --focus-color: #2196f3;
+}

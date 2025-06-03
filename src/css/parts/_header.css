@@ -1,0 +1,21 @@
+#header-outer {
+    background-color: var(--primary-color);
+    color: #fff;
+    padding: 0 16px;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+#header {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}

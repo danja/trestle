@@ -1,0 +1,36 @@
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    #header {
+        font-size: 1.1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px;
+    }
+
+    .breadcrumb {
+        display: none;
+    }
+
+    .search-bar input[type="text"] {
+        width: 100px;
+    }
+
+    .search-bar input[type="text"]:focus {
+        width: 140px;
+    }
+
+    #container {
+        flex-direction: column;
+        margin-top: 54px;
+    }
+
+    #right-panel {
+        position: static;
+        width: 100%;
+        height: auto;
+        max-height: 50vh;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+    }
+}

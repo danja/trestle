@@ -1,0 +1,146 @@
+/* Options Button */
+#optionsButton {
+    font-size: 1.3rem;
+    color: #888;
+    position: relative;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+#optionsButton:hover {
+    background-color: var(--hover-bg);
+}
+
+#optionsButton .vertical-line {
+    display: inline-block;
+    width: 1px;
+    height: 18px;
+    background: #ccc;
+    margin-left: 4px;
+}
+
+/* Options Menu */
+.options-menu {
+    position: fixed;
+    top: 54px;
+    right: 16px;
+    width: 240px;
+    background: var(--background-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    overflow: hidden;
+    display: none;
+}
+
+.options-menu.visible {
+    display: block;
+}
+
+.options-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.options-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.options-list {
+    padding: 8px 0;
+}
+
+.option-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.option-item:hover {
+    background-color: var(--hover-bg);
+}
+
+.option-item i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+.options-menu-list {
+    list-style: none;
+    padding: 8px 0;
+    margin: 0;
+}
+
+.options-menu-item {
+    margin: 0;
+    padding: 0;
+}
+
+.options-menu-button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 10px 16px;
+    background: none;
+    border: none;
+    text-align: left;
+    color: #333;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.options-menu-button:hover,
+.options-menu-button:focus {
+    background-color: var(--hover-bg);
+    outline: none;
+}
+
+.options-menu-button[aria-disabled="true"] {
+    color: #999;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.options-menu-icon {
+    margin-right: 12px;
+    width: 20px;
+    text-align: center;
+}
+
+.options-menu-label {
+    flex: 1;
+}
+
+/* Divider for menu items */
+.options-menu-divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 4px 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .options-menu {
+        width: calc(100% - 32px);
+        right: 16px;
+    }
+    
+    .favorites-panel {
+        width: calc(100% - 32px);
+        right: 16px;
+        left: 16px;
+        max-height: 50vh;
+    }
+}
