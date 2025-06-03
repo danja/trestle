@@ -7,7 +7,9 @@
     <title>Trestle - Hierarchical Todo List</title>
     <link rel="stylesheet" href="css/trestle.css">
     <link rel="stylesheet" href="css/right-panel.css">
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
     <meta name="description" content="Trestle - A hierarchical todo list with SPARQL backend">
 </head>
 
@@ -48,9 +50,9 @@
                 <li><button id="mobileAddButton">Add Root Item</button></li>
                 <li><button id="mobileShortcutsButton" data-view="shortcuts">Shortcuts</button></li>
                 <li><button id="mobileConsoleButton" data-view="console">
-                  Console
-                  <span class="notification-badge hidden"></span>
-                </button></li>
+                        Console
+                        <span class="notification-badge hidden"></span>
+                    </button></li>
             </ul>
         </div>
     </div>
@@ -76,9 +78,9 @@
                 &times;
             </button>
         </div>
-        
+
         <!-- Panel Tabs removed: only show current view title in header -->
-        
+
         <!-- Panel Content -->
         <div class="panel-content">
             <!-- Console Panel -->
@@ -96,7 +98,8 @@
                         </select>
                     </div>
                     <div class="console-actions">
-                        <button id="clear-console" class="console-button" title="Clear console" aria-label="Clear console">
+                        <button id="clear-console" class="console-button" title="Clear console"
+                            aria-label="Clear console">
                             <i class="icon-clear">🗑️</i>
                             <span>Clear</span>
                         </button>
@@ -110,7 +113,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Shortcuts Panel -->
             <div id="shortcuts-content" class="panel-section" role="tabpanel" aria-labelledby="shortcuts-tab" hidden>
                 <div class="shortcuts-list">
@@ -118,7 +121,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Resize Handle -->
         <div class="resize-handle" aria-hidden="true"></div>
     </div>

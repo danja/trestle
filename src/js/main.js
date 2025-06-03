@@ -13,21 +13,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize the event bus
     const eventBus = new EventBus()
     console.log('EventBus initialized')
-    
+
     // Initialize event logger
     const eventLogger = new EventLogger(eventBus, {
-      loggerName: 'Trestle:EventLogger',
-      logLevel: 'debug',
-      ignorePatterns: [
-        // Ignore high-frequency events that would clutter the logs
-        /^mousemove|mousedown|mouseup|click|scroll|resize|input|keydown|keyup|keypress$/,
-        // Ignore internal events that might cause noise
-        /^console:/,
-        'trestle:rendering',
-        'trestle:rendered',
-        'trestle:updating',
-        'trestle:updated'
-      ]
+        loggerName: 'Trestle:EventLogger',
+        logLevel: 'debug',
+        ignorePatterns: [
+            // Ignore high-frequency events that would clutter the logs
+            /^mousemove|mousedown|mouseup|click|scroll|resize|input|keydown|keyup|keypress$/,
+            // Ignore internal events that might cause noise
+            /^console:/,
+            'trestle:rendering',
+            'trestle:rendered',
+            'trestle:updating',
+            'trestle:updated'
+        ]
     });
     console.log('EventLogger initialized');
 
@@ -111,18 +111,18 @@ function setupUIListeners(controller, eventBus) {
             console.error('Right panel not initialized');
             return;
         }
-        
+
         console.log('Current panel state:', {
             panelElement: rightPanel.panel ? 'found' : 'not found',
             isVisible: rightPanel.isVisible(),
             hasHiddenClass: rightPanel.panel?.classList.contains('hidden'),
             currentView: rightPanel.currentView
         });
-        
+
         // Toggle the panel with the specified view
         console.log(`Calling rightPanel.toggle('${view}')`);
         rightPanel.toggle(view);
-        
+
         // Close the mobile menu if open
         const menuBox = document.getElementById('menu-box');
         if (menuBox) {
@@ -160,12 +160,12 @@ function setupUIListeners(controller, eventBus) {
         hamburgerButton.addEventListener('click', (event) => {
             // Toggle menu visibility
             const menuWasHidden = menuBox.classList.contains('hidden');
-            
+
             // Close any open panels when opening the menu
             if (menuWasHidden && rightPanel && rightPanel.isVisible()) {
                 rightPanel.hide();
             }
-            
+
             menuBox.classList.toggle('hidden');
             event.stopPropagation();
         });
@@ -174,8 +174,8 @@ function setupUIListeners(controller, eventBus) {
     // Close menu when clicking outside
     if (menuBox) {
         document.addEventListener('click', (event) => {
-            if (!menuBox.contains(event.target) && 
-                event.target !== hamburgerButton && 
+            if (!menuBox.contains(event.target) &&
+                event.target !== hamburgerButton &&
                 !menuBox.classList.contains('hidden')) {
                 menuBox.classList.add('hidden');
             }

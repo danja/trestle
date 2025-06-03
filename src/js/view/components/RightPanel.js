@@ -484,7 +484,7 @@ export class RightPanel {
     });
 
     // Show the requested panel
-    const targetPanel = this.panel.querySelector(`#${view}-content`);  
+    const targetPanel = this.panel.querySelector(`#${view}-content`);
     if (targetPanel) {
       targetPanel.style.display = 'flex';
       targetPanel.style.opacity = '1';
