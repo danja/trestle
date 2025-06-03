@@ -100,49 +100,87 @@ function setupUIListeners(controller, eventBus) {
         })
     }
 
-    // Shortcuts and Console buttons
-    const handlePanelButtonClick = (eventBus, view) => {
-        // Emit an event to toggle the right panel with the specified view
-        eventBus.emit('rightpanel:toggle', { view });
-        menuBox.classList.add('hidden');
+    /**
+     * Handle panel button clicks for both mobile and desktop
+     * @param {string} view - The view to show ('console' or 'shortcuts')
+     */
+    const handlePanelButtonClick = (view) => {
+        console.log(`Panel button clicked for view: ${view}`);
+        const rightPanel = window.rightPanel;
+        if (!rightPanel) {
+            console.error('Right panel not initialized');
+            return;
+        }
+        
+        console.log('Current panel state:', {
+            panelElement: rightPanel.panel ? 'found' : 'not found',
+            isVisible: rightPanel.isVisible(),
+            hasHiddenClass: rightPanel.panel?.classList.contains('hidden'),
+            currentView: rightPanel.currentView
+        });
+        
+        // Toggle the panel with the specified view
+        console.log(`Calling rightPanel.toggle('${view}')`);
+        rightPanel.toggle(view);
+        
+        // Close the mobile menu if open
+        const menuBox = document.getElementById('menu-box');
+        if (menuBox) {
+            console.log('Hiding mobile menu');
+            menuBox.classList.add('hidden');
+        }
     };
 
-    // Desktop shortcuts button (if exists)
+    // Desktop shortcuts button
     if (shortcutsButton) {
-        shortcutsButton.addEventListener('click', () => handlePanelButtonClick(eventBus, 'shortcuts'));
+        shortcutsButton.addEventListener('click', () => handlePanelButtonClick('shortcuts'));
     }
 
     // Mobile shortcuts button
     if (mobileShortcutsButton) {
-        mobileShortcutsButton.addEventListener('click', () => handlePanelButtonClick(eventBus, 'shortcuts'));
+        mobileShortcutsButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            handlePanelButtonClick('shortcuts');
+        });
     }
 
     // Mobile console button
     const mobileConsoleButton = document.getElementById('mobileConsoleButton');
     if (mobileConsoleButton) {
-        mobileConsoleButton.addEventListener('click', () => handlePanelButtonClick(eventBus, 'console'));
+        mobileConsoleButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            handlePanelButtonClick('console');
+        });
     }
 
-    // Mobile menu (handled by HamburgerMenu component)
-    /*
+    // Mobile menu toggle
     if (hamburgerButton && menuBox) {
         hamburgerButton.addEventListener('click', (event) => {
-            menuBox.classList.toggle('hidden')
-            event.stopPropagation()
-        })
+            // Toggle menu visibility
+            const menuWasHidden = menuBox.classList.contains('hidden');
+            
+            // Close any open panels when opening the menu
+            if (menuWasHidden && rightPanel && rightPanel.isVisible()) {
+                rightPanel.hide();
+            }
+            
+            menuBox.classList.toggle('hidden');
+            event.stopPropagation();
+        });
     }
 
     // Close menu when clicking outside
     if (menuBox) {
         document.addEventListener('click', (event) => {
-            if (!menuBox.classList.contains('hidden') &&
-                !menuBox.contains(event.target) &&
-                event.target !== hamburgerButton) {
-                menuBox.classList.add('hidden')
+            if (!menuBox.contains(event.target) && 
+                event.target !== hamburgerButton && 
+                !menuBox.classList.contains('hidden')) {
+                menuBox.classList.add('hidden');
             }
-        })
+        });
     }
-    */
 
     // Card close button
     if (cardClose) {
