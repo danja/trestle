@@ -45,25 +45,10 @@ export default class ConsolePanel {
    */
   setupEventListeners() {
     // Listen for all console log events, including custom debug/info
-    this.eventBus.on('node:added', (message) => {
-      console.log('HERE');
-      this.logToConsole(message);
-      this.logToConsole(message, 'debug');
-    });
-    this.eventBus.on('console:debug', (message) => {
-      this.logToConsole(message, 'debug');
-    });
-    this.eventBus.on('console:info', (message) => {
-      this.logToConsole(message, 'info');
-    });
-    this.eventBus.on('console:warn', (message) => {
-      this.logToConsole(message, 'warn');
-    });
-    this.eventBus.on('console:error', (message) => {
-      this.logToConsole(message, 'error');
-    });
-    this.eventBus.on('console:log', (message) => {
-      this.logToConsole(message, 'log');
+    ['log', 'error', 'warn', 'info', 'debug'].forEach(level => {
+      this.eventBus.on(`console:${level}`, (message) => {
+        this.logToConsole(message, level);
+      });
     });
 
     // Listen for clear console events
@@ -110,6 +95,11 @@ export default class ConsolePanel {
 
       this.consoleOutput.appendChild(logEntry);
 
+      // Hide the empty state if present
+      if (this.consoleEmptyState && !this.consoleEmptyState.classList.contains('hidden')) {
+        this.consoleEmptyState.classList.add('hidden');
+      }
+
       // Auto-scroll if near bottom
       if (this.isScrolledToBottom()) {
         this.scrollToBottom();
@@ -133,6 +123,10 @@ export default class ConsolePanel {
       this.consoleOutput.innerHTML = '';
       this.unreadCount = 0;
       this.eventBus.emit('console:cleared');
+      // Show the empty state again
+      if (this.consoleEmptyState) {
+        this.consoleEmptyState.classList.remove('hidden');
+      }
     }
   }
 
