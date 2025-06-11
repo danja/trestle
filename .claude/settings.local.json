@@ -3,7 +3,27 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npm test)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(npm run dev:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_install",
+      "Bash(curl:*)",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_handle_dialog",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_tab_new",
+      "Bash(pkill:*)",
+      "Bash(npm test:*)",
+      "Bash(node:*)",
+      "Bash(npm run build:*)",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type",
+      "Bash(grep:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

@@ -28,8 +28,8 @@ export class Breadcrumb {
     this.handleNavigate = this.handleNavigate.bind(this);
     this.handleBreadcrumbClick = this.handleBreadcrumbClick.bind(this);
     
-    // Breadcrumb disabled for test isolation
-    // this.initialize();
+    // Initialize the breadcrumb component
+    this.initialize();
   }
 
   /**

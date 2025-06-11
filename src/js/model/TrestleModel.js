@@ -546,6 +546,58 @@ export class TrestleModel {
         }
         return null
     }
+
+    /**
+     * Get all nodes for searching
+     * @returns {Array} Array of all nodes
+     */
+    getAllNodesForSearch() {
+        return Array.from(this.nodes.values()).filter(node => 
+            node.type === 'Node' // Exclude root nodes from search
+        )
+    }
+
+    /**
+     * Get node by ID
+     * @param {string} nodeId - The node ID
+     * @returns {Object|null} The node or null if not found
+     */
+    getNode(nodeId) {
+        return this.nodes.get(nodeId) || null
+    }
+
+    /**
+     * Get all children of a node
+     * @param {string} nodeId - The parent node ID
+     * @returns {Array} Array of child nodes
+     */
+    getChildNodes(nodeId) {
+        const node = this.getNode(nodeId)
+        if (!node || !node.children) {
+            return []
+        }
+
+        return node.children
+            .map(childId => this.getNode(childId))
+            .filter(child => child !== null)
+    }
+
+    /**
+     * Get the path from root to a specific node
+     * @param {string} nodeId - The target node ID
+     * @returns {Array} Array of nodes representing the path
+     */
+    getNodePath(nodeId) {
+        const path = []
+        let currentNode = this.getNode(nodeId)
+
+        while (currentNode && currentNode.id !== this.rootId) {
+            path.unshift(currentNode)
+            currentNode = currentNode.parent ? this.getNode(currentNode.parent) : null
+        }
+
+        return path
+    }
 }
 
 export default TrestleModel;

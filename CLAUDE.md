@@ -21,8 +21,14 @@ npm run build
 # Run all tests
 npm test
 
+# Run tests with UI
+npm test:ui
+
 # Generate documentation
 npm run docs
+
+# Generate repository summary
+npm run rp
 ```
 
 ## Project Architecture
@@ -57,14 +63,23 @@ The data model uses RDF with the following predicates:
 
 ## Testing
 
-The project uses Jasmine for testing:
+The project uses Vitest with jsdom environment:
 - Tests are located in the `test/` directory
-- Unit tests for model components in `test/unit/`
-- Integration tests in `test/integration/`
+- Test files follow the pattern `*.test.js`
+- Global test utilities available (globals: true in vitest config)
+- Use `npm test:ui` for interactive testing interface
 
 ## Build System
 
 - Webpack is used for bundling and building
-- Babel for transpilation
+- Babel for transpilation  
 - The entry point is `src/js/main.js`
 - CSS is processed and bundled separately
+- Development server runs on port 9090
+- Uses ES modules (type: "module" in package.json)
+
+## Configuration
+
+- SPARQL endpoint configuration is in `src/js/config.js`
+- Webpack configuration in `webpack.config.js`
+- JSDoc configuration in `jsdoc.json`

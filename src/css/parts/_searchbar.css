@@ -43,3 +43,43 @@
     align-items: center;
     justify-content: center;
 }
+
+/* Search Results Highlighting */
+.search-result {
+    border: 1px solid #007bff;
+    border-radius: 3px;
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.search-highlight {
+    background-color: #ffff99;
+    padding: 1px 2px;
+    border-radius: 2px;
+}
+
+/* Search Notifications */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.search-notification {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}

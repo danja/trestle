@@ -8,6 +8,8 @@ import { NodeSelector } from './components/NodeSelector.js';
 import { HamburgerMenu } from './components/HamburgerMenu.js';
 import { Breadcrumb } from './components/Breadcrumb.js'; // [CASCADE] Imported Breadcrumb component
 import { RightPanel } from './components/RightPanel.js'; // Import RightPanel component
+import { NavigationControls } from './components/NavigationControls.js'; // Import NavigationControls component
+import { SearchBar } from './components/SearchBar.js'; // Import SearchBar component
 
 export default class TrestleView {
     constructor(rootElement, eventBus) {
@@ -26,7 +28,9 @@ export default class TrestleView {
             try {
                 this.hamburgerMenu = new HamburgerMenu(document.getElementById('header-outer'), eventBus);
                 this.rightPanel = new RightPanel(eventBus);
-                console.log('[TrestleView] RightPanel initialized successfully');
+                this.navigationControls = new NavigationControls(document.body, eventBus);
+                this.searchBar = new SearchBar(document.body, eventBus);
+                console.log('[TrestleView] RightPanel, NavigationControls, and SearchBar initialized successfully');
                 
                 // Verify RightPanel initialization
                 if (this.rightPanel) {
@@ -135,6 +139,20 @@ export default class TrestleView {
                 }
                 this.renderTree();
                 this.updateBreadcrumb();
+                
+                // Emit breadcrumb update for root view
+                if (this.breadcrumb && this.eventBus) {
+                    const rootNode = Object.values(this.allNodes).find(n => n.type === 'RootNode');
+                    if (rootNode) {
+                        this.eventBus.emit('breadcrumb:update', { 
+                            node: { 
+                                id: 'root',
+                                title: 'Home',
+                                path: []
+                            } 
+                        });
+                    }
+                }
             }
         });
         
@@ -147,6 +165,20 @@ export default class TrestleView {
                 }
                 this.renderTree();
                 this.updateBreadcrumb();
+                
+                // Emit breadcrumb update for root view
+                if (this.breadcrumb && this.eventBus) {
+                    const rootNode = Object.values(this.allNodes).find(n => n.type === 'RootNode');
+                    if (rootNode) {
+                        this.eventBus.emit('breadcrumb:update', { 
+                            node: { 
+                                id: 'root',
+                                title: 'Home',
+                                path: []
+                            } 
+                        });
+                    }
+                }
             }
         });
         
@@ -189,6 +221,37 @@ export default class TrestleView {
                 this.nodeSelector.moveNodeDown(data.nodeId);
             }
         });
+        
+        // Navigation event listeners
+        this.eventBus.on('view:navigateBack', (data) => {
+            if (data.nodeId) {
+                this.zoomOutToNode(data.nodeId);
+            }
+        });
+        
+        this.eventBus.on('view:navigateForward', (data) => {
+            if (data.nodeId) {
+                this.zoomInToNode(data.nodeId);
+            }
+        });
+        
+        this.eventBus.on('view:navigateHome', () => {
+            this.zoomOutToNode(null); // Navigate to root
+        });
+        
+        // Breadcrumb navigation event
+        this.eventBus.on('view:navigateTo', (data) => {
+            if (data.nodeId === 'root' || data.nodeId === null) {
+                this.zoomOutToNode(null);
+            } else {
+                this.zoomInToNode(data.nodeId);
+            }
+        });
+
+        // Search event listeners
+        this.eventBus.on('search:results', this.handleSearchResults.bind(this));
+        this.eventBus.on('search:cleared', this.handleSearchCleared.bind(this));
+        this.eventBus.on('search:error', this.handleSearchError.bind(this));
         
         // Log events for debugging
         console.log('[TrestleView] Event handlers set up');
@@ -256,13 +319,28 @@ export default class TrestleView {
         // [CASCADE] Emit breadcrumb:update event for new Breadcrumb component
         if (this.breadcrumb && this.eventBus) {
             let path = [];
-            let nodeId = this.currentZoomNodeId || (rootNode && rootNode.id);
-            while (nodeId && this.allNodes[nodeId]) {
-                path.unshift(this.allNodes[nodeId]);
-                nodeId = this.allNodes[nodeId].parent || null;
+            let currentNodeId = this.currentZoomNodeId || (rootNode && rootNode.id);
+            const maxDepth = 20; // Prevent infinite loops
+            let depth = 0;
+            
+            while (currentNodeId && this.allNodes[currentNodeId] && depth < maxDepth) {
+                const node = this.allNodes[currentNodeId];
+                path.unshift({
+                    id: node.id,
+                    title: node.title || 'Untitled'
+                });
+                currentNodeId = node.parent || null;
+                depth++;
             }
+            
             console.log('[CASCADE][TrestleView] Emitting breadcrumb:update with path:', path);
-            this.eventBus.emit('breadcrumb:update', { node: { path } });
+            this.eventBus.emit('breadcrumb:update', { 
+                node: { 
+                    id: this.currentZoomNodeId || (rootNode && rootNode.id),
+                    title: this.currentZoomNodeId ? (this.allNodes[this.currentZoomNodeId]?.title || 'Untitled') : 'Home',
+                    path: path
+                } 
+            });
         }
     }
 
@@ -564,16 +642,35 @@ export default class TrestleView {
             }
         }
         this.currentZoomNodeId = nodeId;
+        
+        // Emit navigation event for NavigationControls to track history
+        this.eventBus.emit('navigate', { nodeId });
+        
         // [CASCADE] Emit breadcrumb:update event for new Breadcrumb component
         if (this.breadcrumb && this.eventBus) {
             let path = [];
-            let nodeId = this.currentZoomNodeId;
-            while (nodeId && this.allNodes[nodeId]) {
-                path.unshift(this.allNodes[nodeId]);
-                nodeId = this.allNodes[nodeId].parent || null;
+            let currentNodeId = this.currentZoomNodeId;
+            const maxDepth = 20; // Prevent infinite loops
+            let depth = 0;
+            
+            while (currentNodeId && this.allNodes[currentNodeId] && depth < maxDepth) {
+                const node = this.allNodes[currentNodeId];
+                path.unshift({
+                    id: node.id,
+                    title: node.title || 'Untitled'
+                });
+                currentNodeId = node.parent || null;
+                depth++;
             }
+            
             console.log('[CASCADE][TrestleView] Emitting breadcrumb:update with path:', path);
-            this.eventBus.emit('breadcrumb:update', { node: { path } });
+            this.eventBus.emit('breadcrumb:update', { 
+                node: { 
+                    id: this.currentZoomNodeId,
+                    title: this.allNodes[this.currentZoomNodeId]?.title || 'Untitled',
+                    path: path
+                } 
+            });
         }
         this.updateBreadcrumb();
     }
@@ -581,6 +678,8 @@ export default class TrestleView {
     zoomOutToNode(nodeId) {
         if (nodeId === null || nodeId === '') {
             this.currentZoomNodeId = null;
+            // Emit navigation event for NavigationControls to track history
+            this.eventBus.emit('navigate', { nodeId: 'root' });
             this.eventBus.emit('model:loaded', { nodes: Object.values(this.allNodes) });
         } else {
             this.zoomInToNode(nodeId);
@@ -628,6 +727,128 @@ export default class TrestleView {
             const nodeId = event.target.dataset.nodeId || null;
             this.zoomOutToNode(nodeId);
         }
+    }
+
+    /**
+     * Handle search results
+     * @param {Object} data - The search results data
+     */
+    handleSearchResults(data) {
+        const { query, results, timestamp } = data;
+        console.log(`[TrestleView] Search results for "${query}":`, results);
+
+        // For now, just highlight matching nodes in the current view
+        // This could be extended to show a dedicated search results view
+        this.highlightSearchResults(results);
+        
+        // Show a temporary notification with result count
+        this.showSearchNotification(`Found ${results.length} result${results.length !== 1 ? 's' : ''} for "${query}"`);
+    }
+
+    /**
+     * Handle search cleared
+     * @param {Object} data - The search cleared data
+     */
+    handleSearchCleared(data) {
+        console.log('[TrestleView] Search cleared');
+        
+        // Remove any search highlighting
+        this.clearSearchHighlights();
+    }
+
+    /**
+     * Handle search error
+     * @param {Object} data - The search error data
+     */
+    handleSearchError(data) {
+        const { query, error } = data;
+        console.error(`[TrestleView] Search error for "${query}":`, error);
+        
+        // Show error notification
+        this.showSearchNotification(`Search error: ${error}`, 'error');
+    }
+
+    /**
+     * Highlight search results in the current view
+     * @param {Array} results - Array of search results
+     */
+    highlightSearchResults(results) {
+        // Clear previous highlights
+        this.clearSearchHighlights();
+
+        // Highlight matching nodes that are currently visible
+        for (const result of results) {
+            const nodeElement = this.nodeElements.get(result.node.id);
+            if (nodeElement) {
+                nodeElement.classList.add('search-result');
+                
+                // Highlight the specific text matches
+                const titleElement = nodeElement.querySelector('.ts-title');
+                if (titleElement && result.matches) {
+                    for (const match of result.matches) {
+                        if (match.field === 'title') {
+                            // Simple highlighting - could be enhanced with proper HTML escaping
+                            titleElement.style.backgroundColor = '#ffff99';
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Clear search highlights
+     */
+    clearSearchHighlights() {
+        // Remove search result classes
+        const highlightedElements = this.rootElement.querySelectorAll('.search-result');
+        for (const element of highlightedElements) {
+            element.classList.remove('search-result');
+        }
+
+        // Remove inline highlighting styles
+        const titleElements = this.rootElement.querySelectorAll('.ts-title');
+        for (const element of titleElements) {
+            element.style.backgroundColor = '';
+        }
+    }
+
+    /**
+     * Show a temporary search notification
+     * @param {string} message - The message to show
+     * @param {string} type - The notification type ('info' or 'error')
+     */
+    showSearchNotification(message, type = 'info') {
+        // Create a simple notification element
+        const notification = document.createElement('div');
+        notification.className = `search-notification search-notification-${type}`;
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            padding: 10px 15px;
+            background: ${type === 'error' ? '#f8d7da' : '#d4edda'};
+            color: ${type === 'error' ? '#721c24' : '#155724'};
+            border: 1px solid ${type === 'error' ? '#f5c6cb' : '#c3e6cb'};
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        `;
+
+        // Add to document
+        document.body.appendChild(notification);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
     }
 }
 

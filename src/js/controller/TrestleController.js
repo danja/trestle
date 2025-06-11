@@ -1,4 +1,6 @@
 // src/js/controller/TrestleController.js
+import { SearchEngine } from '../utils/SearchEngine.js'
+
 export class TrestleController {
     /**
      * Creates a new TrestleController instance
@@ -10,6 +12,14 @@ export class TrestleController {
         this.model = model
         this.view = view
         this.eventBus = eventBus
+
+        // Initialize search engine
+        this.searchEngine = new SearchEngine({
+            caseSensitive: false,
+            wholeWord: false,
+            includeDescriptions: true,
+            maxResults: 50
+        })
 
         // Set up event handlers
         this.setupEventHandlers()
@@ -61,6 +71,10 @@ export class TrestleController {
 
         // Position-specific insertion
         this.eventBus.on('view:insertNodeAt', this.handleInsertNodeAt.bind(this))
+
+        // Search events
+        this.eventBus.on('view:search', this.handleSearch.bind(this))
+        this.eventBus.on('view:clearSearch', this.handleClearSearch.bind(this))
     }
 
     /**
@@ -301,6 +315,71 @@ export class TrestleController {
         if (node && callback) {
             callback(node)
         }
+    }
+
+    /**
+     * Handle search requests
+     * @param {Object} data - The search data
+     */
+    handleSearch(data) {
+        const { query } = data
+
+        if (!query || !query.trim()) {
+            this.handleClearSearch()
+            return
+        }
+
+        try {
+            // Get all nodes from the model
+            const nodes = this.model.getAllNodesForSearch()
+            
+            // Perform search
+            const results = this.searchEngine.search(nodes, query.trim())
+            
+            // Emit search results
+            this.eventBus.emit('search:results', {
+                query: query.trim(),
+                results,
+                timestamp: Date.now()
+            })
+
+            console.log(`Search for "${query}" returned ${results.length} results`)
+        } catch (error) {
+            console.error('Search error:', error)
+            this.eventBus.emit('search:error', {
+                query,
+                error: error.message,
+                timestamp: Date.now()
+            })
+        }
+    }
+
+    /**
+     * Handle clear search requests
+     */
+    handleClearSearch() {
+        // Emit clear search results
+        this.eventBus.emit('search:cleared', {
+            timestamp: Date.now()
+        })
+
+        console.log('Search cleared')
+    }
+
+    /**
+     * Update search engine options
+     * @param {Object} options - New search options
+     */
+    updateSearchOptions(options) {
+        this.searchEngine.setOptions(options)
+    }
+
+    /**
+     * Get current search engine options
+     * @returns {Object} Current search options
+     */
+    getSearchOptions() {
+        return this.searchEngine.getOptions()
     }
 }
 
