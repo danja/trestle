@@ -455,6 +455,15 @@ export class TrestleModel {
                 if (node.description) {
                     turtle += `<${this.baseUri}${node.id}> dc:description """${this.escapeTurtle(node.description)}""" .\n`
                 }
+
+                // Add tags as separate triples
+                if (node.tags && Array.isArray(node.tags)) {
+                    node.tags.forEach(tag => {
+                        if (tag && typeof tag === 'string' && tag.trim().length > 0) {
+                            turtle += `<${this.baseUri}${node.id}> ts:tag "${this.escapeTurtle(tag.trim())}" .\n`
+                        }
+                    })
+                }
             }
         }
 
@@ -597,6 +606,153 @@ export class TrestleModel {
         }
 
         return path
+    }
+
+    /**
+     * Add a tag to a node
+     * @param {string} nodeId - The node ID
+     * @param {string} tag - The tag to add
+     * @returns {boolean} Success indicator
+     */
+    addNodeTag(nodeId, tag) {
+        const node = this.getNode(nodeId)
+        if (!node) {
+            console.warn(`Node ${nodeId} not found for adding tag`)
+            return false
+        }
+
+        // Initialize tags array if it doesn't exist
+        if (!node.tags) {
+            node.tags = []
+        }
+
+        // Add tag if not already present
+        if (!node.tags.includes(tag)) {
+            node.tags.push(tag)
+            this.eventBus.emit('node:tagAdded', { nodeId, tag, tags: [...node.tags] })
+            return true
+        }
+
+        return false
+    }
+
+    /**
+     * Remove a tag from a node
+     * @param {string} nodeId - The node ID
+     * @param {string} tag - The tag to remove
+     * @returns {boolean} Success indicator
+     */
+    removeNodeTag(nodeId, tag) {
+        const node = this.getNode(nodeId)
+        if (!node || !node.tags) {
+            return false
+        }
+
+        const index = node.tags.indexOf(tag)
+        if (index !== -1) {
+            node.tags.splice(index, 1)
+            this.eventBus.emit('node:tagRemoved', { nodeId, tag, tags: [...node.tags] })
+            return true
+        }
+
+        return false
+    }
+
+    /**
+     * Toggle a tag on a node
+     * @param {string} nodeId - The node ID
+     * @param {string} tag - The tag to toggle
+     * @returns {boolean} True if tag was added, false if removed
+     */
+    toggleNodeTag(nodeId, tag) {
+        const node = this.getNode(nodeId)
+        if (!node) {
+            return false
+        }
+
+        if (this.hasNodeTag(nodeId, tag)) {
+            this.removeNodeTag(nodeId, tag)
+            return false
+        } else {
+            this.addNodeTag(nodeId, tag)
+            return true
+        }
+    }
+
+    /**
+     * Check if a node has a specific tag
+     * @param {string} nodeId - The node ID
+     * @param {string} tag - The tag to check
+     * @returns {boolean} True if node has the tag
+     */
+    hasNodeTag(nodeId, tag) {
+        const node = this.getNode(nodeId)
+        return node && node.tags && node.tags.includes(tag)
+    }
+
+    /**
+     * Get all tags for a node
+     * @param {string} nodeId - The node ID
+     * @returns {Array} Array of tags
+     */
+    getNodeTags(nodeId) {
+        const node = this.getNode(nodeId)
+        return node && node.tags ? [...node.tags] : []
+    }
+
+    /**
+     * Get all nodes with a specific tag
+     * @param {string} tag - The tag to search for
+     * @returns {Array} Array of nodes with the tag
+     */
+    getNodesByTag(tag) {
+        return Array.from(this.nodes.values()).filter(node => 
+            node.tags && node.tags.includes(tag)
+        )
+    }
+
+    /**
+     * Add node to favorites
+     * @param {string} nodeId - The node ID
+     * @returns {boolean} Success indicator
+     */
+    addToFavorites(nodeId) {
+        return this.addNodeTag(nodeId, 'favorite')
+    }
+
+    /**
+     * Remove node from favorites
+     * @param {string} nodeId - The node ID
+     * @returns {boolean} Success indicator
+     */
+    removeFromFavorites(nodeId) {
+        return this.removeNodeTag(nodeId, 'favorite')
+    }
+
+    /**
+     * Toggle favorite status of a node
+     * @param {string} nodeId - The node ID
+     * @returns {boolean} True if added to favorites, false if removed
+     */
+    toggleFavorite(nodeId) {
+        return this.toggleNodeTag(nodeId, 'favorite')
+    }
+
+    /**
+     * Check if node is in favorites
+     * @param {string} nodeId - The node ID
+     * @returns {boolean} True if node is favorited
+     */
+    isFavorite(nodeId) {
+        return this.hasNodeTag(nodeId, 'favorite')
+    }
+
+    /**
+     * Get all favorite nodes
+     * @returns {Array} Array of favorite nodes
+     */
+    getFavoriteNodes() {
+        return this.getNodesByTag('favorite')
     }
 }
 

@@ -10,6 +10,7 @@ import { Breadcrumb } from './components/Breadcrumb.js'; // [CASCADE] Imported B
 import { RightPanel } from './components/RightPanel.js'; // Import RightPanel component
 import { NavigationControls } from './components/NavigationControls.js'; // Import NavigationControls component
 import { SearchBar } from './components/SearchBar.js'; // Import SearchBar component
+import { Favorites } from './components/Favorites.js'; // Import Favorites component
 
 export default class TrestleView {
     constructor(rootElement, eventBus) {
@@ -30,7 +31,8 @@ export default class TrestleView {
                 this.rightPanel = new RightPanel(eventBus);
                 this.navigationControls = new NavigationControls(document.body, eventBus);
                 this.searchBar = new SearchBar(document.body, eventBus);
-                console.log('[TrestleView] RightPanel, NavigationControls, and SearchBar initialized successfully');
+                this.favorites = new Favorites(document.body, eventBus);
+                console.log('[TrestleView] RightPanel, NavigationControls, SearchBar, and Favorites initialized successfully');
                 
                 // Verify RightPanel initialization
                 if (this.rightPanel) {

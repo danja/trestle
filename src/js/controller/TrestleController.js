@@ -75,6 +75,12 @@ export class TrestleController {
         // Search events
         this.eventBus.on('view:search', this.handleSearch.bind(this))
         this.eventBus.on('view:clearSearch', this.handleClearSearch.bind(this))
+
+        // Favorites events
+        this.eventBus.on('favorites:toggle', this.handleToggleFavorite.bind(this))
+        this.eventBus.on('favorites:add', this.handleAddFavorite.bind(this))
+        this.eventBus.on('favorites:remove', this.handleRemoveFavorite.bind(this))
+        this.eventBus.on('favorites:get', this.handleGetFavorites.bind(this))
     }
 
     /**
@@ -380,6 +386,155 @@ export class TrestleController {
      */
     getSearchOptions() {
         return this.searchEngine.getOptions()
+    }
+
+    /**
+     * Handle toggle favorite requests
+     * @param {Object} data - The favorite data
+     */
+    handleToggleFavorite(data) {
+        const { nodeId } = data
+
+        if (!nodeId) {
+            console.warn('No nodeId provided for favorite toggle')
+            return
+        }
+
+        try {
+            const wasAdded = this.model.toggleFavorite(nodeId)
+            const node = this.model.getNode(nodeId)
+            
+            if (node) {
+                this.eventBus.emit('favorites:toggled', {
+                    nodeId,
+                    isFavorite: wasAdded,
+                    node: {
+                        id: node.id,
+                        title: node.title,
+                        tags: node.tags || []
+                    },
+                    timestamp: Date.now()
+                })
+
+                console.log(`Node ${nodeId} ${wasAdded ? 'added to' : 'removed from'} favorites`)
+            }
+        } catch (error) {
+            console.error('Error toggling favorite:', error)
+            this.eventBus.emit('favorites:error', {
+                nodeId,
+                error: error.message,
+                timestamp: Date.now()
+            })
+        }
+    }
+
+    /**
+     * Handle add favorite requests
+     * @param {Object} data - The favorite data
+     */
+    handleAddFavorite(data) {
+        const { nodeId } = data
+
+        if (!nodeId) {
+            console.warn('No nodeId provided for add favorite')
+            return
+        }
+
+        try {
+            const success = this.model.addToFavorites(nodeId)
+            const node = this.model.getNode(nodeId)
+            
+            if (success && node) {
+                this.eventBus.emit('favorites:added', {
+                    nodeId,
+                    node: {
+                        id: node.id,
+                        title: node.title,
+                        tags: node.tags || []
+                    },
+                    timestamp: Date.now()
+                })
+
+                console.log(`Node ${nodeId} added to favorites`)
+            }
+        } catch (error) {
+            console.error('Error adding favorite:', error)
+            this.eventBus.emit('favorites:error', {
+                nodeId,
+                error: error.message,
+                timestamp: Date.now()
+            })
+        }
+    }
+
+    /**
+     * Handle remove favorite requests
+     * @param {Object} data - The favorite data
+     */
+    handleRemoveFavorite(data) {
+        const { nodeId } = data
+
+        if (!nodeId) {
+            console.warn('No nodeId provided for remove favorite')
+            return
+        }
+
+        try {
+            const success = this.model.removeFromFavorites(nodeId)
+            
+            if (success) {
+                this.eventBus.emit('favorites:removed', {
+                    nodeId,
+                    timestamp: Date.now()
+                })
+
+                console.log(`Node ${nodeId} removed from favorites`)
+            }
+        } catch (error) {
+            console.error('Error removing favorite:', error)
+            this.eventBus.emit('favorites:error', {
+                nodeId,
+                error: error.message,
+                timestamp: Date.now()
+            })
+        }
+    }
+
+    /**
+     * Handle get favorites requests
+     * @param {Object} data - The request data
+     */
+    handleGetFavorites(data) {
+        const { callback } = data
+
+        try {
+            const favoriteNodes = this.model.getFavoriteNodes()
+            const favorites = favoriteNodes.map(node => ({
+                id: node.id,
+                title: node.title,
+                description: node.description,
+                tags: node.tags || [],
+                created: node.created
+            }))
+
+            this.eventBus.emit('favorites:list', {
+                favorites,
+                count: favorites.length,
+                timestamp: Date.now()
+            })
+
+            if (callback && typeof callback === 'function') {
+                callback(favorites)
+            }
+
+            console.log(`Retrieved ${favorites.length} favorite nodes`)
+        } catch (error) {
+            console.error('Error getting favorites:', error)
+            this.eventBus.emit('favorites:error', {
+                error: error.message,
+                timestamp: Date.now()
+            })
+        }
     }
 }
 

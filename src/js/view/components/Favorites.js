@@ -45,10 +45,17 @@ export class Favorites {
     // Close panel when clicking outside
     document.addEventListener('click', this.handleOutsideClick.bind(this));
     
-    // Listen for favorite events
+    // Listen for favorite events from the backend
+    this.eventBus.on('favorites:toggled', this.handleFavoriteToggled.bind(this));
+    this.eventBus.on('favorites:added', this.handleFavoriteAdded.bind(this));
+    this.eventBus.on('favorites:removed', this.handleFavoriteRemoved.bind(this));
+    this.eventBus.on('favorites:list', this.handleFavoritesList.bind(this));
+    this.eventBus.on('favorites:error', this.handleFavoritesError.bind(this));
+    
+    // Also handle the original events for backward compatibility
     this.eventBus.on('favorites:add', this.handleAddFavorite.bind(this));
     this.eventBus.on('favorites:remove', this.handleRemoveFavorite.bind(this));
-    this.eventBus.on('favorites:toggle', this.handleToggleFavorite.bind(this));
+    // Note: Don't listen to favorites:toggle as it's handled by the controller
     this.eventBus.on('favorites:update', this.handleUpdateFavorites.bind(this));
   }
 
@@ -135,19 +142,23 @@ export class Favorites {
   }
 
   /**
-   * Load favorites from localStorage
+   * Load favorites from the backend
    */
   loadFavorites() {
-    try {
-      const stored = localStorage.getItem(this.storageKey);
-      if (stored) {
-        const favorites = JSON.parse(stored);
-        this.favorites = new Map(favorites);
+    // Request favorites from the backend instead of localStorage
+    this.eventBus.emit('favorites:get', {
+      callback: (favorites) => {
+        this.favorites.clear();
+        favorites.forEach(fav => {
+          this.favorites.set(fav.id, {
+            id: fav.id,
+            title: fav.title,
+            timestamp: fav.created || Date.now()
+          });
+        });
         this.updateFavoritesList();
       }
-    } catch (error) {
-      console.error('Error loading favorites:', error);
-    }
+    });
   }
 
   /**
@@ -313,13 +324,6 @@ export class Favorites {
     this.removeFavorite(nodeId);
   }
 
-  /**
-   * Handle toggle favorite event
-   * @param {Object} data - The favorite data
-   */
-  handleToggleFavorite(data) {
-    this.toggleFavorite(data);
-  }
 
   /**
    * Handle update favorites event
@@ -330,6 +334,111 @@ export class Favorites {
       this.favorites = new Map(favorites);
       this.saveFavorites();
       this.updateFavoritesList();
+    }
+  }
+
+  /**
+   * Handle favorite toggled event from backend
+   * @param {Object} data - The toggle result data
+   */
+  handleFavoriteToggled(data) {
+    const { nodeId, isFavorite, node } = data;
+    
+    if (isFavorite) {
+      this.favorites.set(nodeId, {
+        id: nodeId,
+        title: node.title,
+        timestamp: Date.now()
+      });
+    } else {
+      this.favorites.delete(nodeId);
+    }
+    
+    this.updateFavoritesList();
+    this.updateButtonState(isFavorite);
+  }
+
+  /**
+   * Handle favorite added event from backend
+   * @param {Object} data - The add result data
+   */
+  handleFavoriteAdded(data) {
+    const { nodeId, node } = data;
+    
+    this.favorites.set(nodeId, {
+      id: nodeId,
+      title: node.title,
+      timestamp: Date.now()
+    });
+    
+    this.updateFavoritesList();
+    this.updateButtonState(true);
+  }
+
+  /**
+   * Handle favorite removed event from backend
+   * @param {Object} data - The remove result data
+   */
+  handleFavoriteRemoved(data) {
+    const { nodeId } = data;
+    
+    this.favorites.delete(nodeId);
+    this.updateFavoritesList();
+    this.updateButtonState(false);
+  }
+
+  /**
+   * Handle favorites list event from backend
+   * @param {Object} data - The favorites list data
+   */
+  handleFavoritesList(data) {
+    const { favorites } = data;
+    
+    this.favorites.clear();
+    favorites.forEach(fav => {
+      this.favorites.set(fav.id, {
+        id: fav.id,
+        title: fav.title,
+        timestamp: fav.created || Date.now()
+      });
+    });
+    
+    this.updateFavoritesList();
+  }
+
+  /**
+   * Handle favorites error event from backend
+   * @param {Object} data - The error data
+   */
+  handleFavoritesError(data) {
+    const { error, nodeId } = data;
+    console.error('Favorites error:', error, nodeId);
+    
+    // Show a simple error notification
+    if (this.favoritesPanel && this.isPanelOpen) {
+      const errorMsg = document.createElement('div');
+      errorMsg.className = 'favorites-error';
+      errorMsg.textContent = `Error: ${error}`;
+      errorMsg.style.cssText = `
+        background: #f8d7da;
+        color: #721c24;
+        padding: 8px;
+        margin: 4px 0;
+        border-radius: 4px;
+        font-size: 12px;
+      `;
+      
+      const favoritesList = this.favoritesPanel.querySelector('.favorites-list');
+      if (favoritesList) {
+        favoritesList.prepend(errorMsg);
+        
+        // Remove error after 3 seconds
+        setTimeout(() => {
+          if (errorMsg.parentNode) {
+            errorMsg.parentNode.removeChild(errorMsg);
+          }
+        }, 3000);
+      }
     }
   }
 }

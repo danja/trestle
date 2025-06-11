@@ -16,6 +16,12 @@ export class TreeNode {
         this.eventBus = eventBus;
         this.template = template;
         this.element = null;
+        this.favoriteButton = null;
+        
+        // Listen for favorite state changes
+        this.eventBus.on('favorites:toggled', this.handleFavoriteToggled.bind(this));
+        this.eventBus.on('favorites:added', this.handleFavoriteAdded.bind(this));
+        this.eventBus.on('favorites:removed', this.handleFavoriteRemoved.bind(this));
     }
 
     /**
@@ -56,6 +62,33 @@ export class TreeNode {
             });
         }
         // --- End delete button event listener ---
+
+        // --- Add favorite button ---
+        const favoriteButton = document.createElement('button');
+        favoriteButton.className = 'ts-favorite';
+        favoriteButton.innerHTML = '☆'; // Empty star
+        favoriteButton.setAttribute('aria-label', 'Toggle favorite');
+        favoriteButton.title = 'Add to favorites';
+        
+        favoriteButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.eventBus.emit('favorites:toggle', { 
+                nodeId: id,
+                title: title || 'Untitled'
+            });
+        });
+        
+        // Add the favorite button to the entry
+        if (titleElement) {
+            titleElement.parentNode.insertBefore(favoriteButton, titleElement.nextSibling);
+        }
+        
+        // Store reference to favorite button
+        this.favoriteButton = favoriteButton;
+        
+        // Set initial favorite state
+        this.updateFavoriteState();
+        // --- End favorite button ---
 
         // Append entry to list item
         li.appendChild(entry);
@@ -168,6 +201,79 @@ export class TreeNode {
         const entry = document.getElementById(this.nodeData.id);
         if (entry) {
             entry.classList.remove('ts-selected');
+        }
+    }
+
+    /**
+     * Update the favorite button state
+     */
+    updateFavoriteState() {
+        if (!this.favoriteButton) return;
+
+        const isFavorite = this.nodeData.tags && this.nodeData.tags.includes('favorite');
+        
+        if (isFavorite) {
+            this.favoriteButton.innerHTML = '★'; // Filled star
+            this.favoriteButton.classList.add('is-favorite');
+            this.favoriteButton.title = 'Remove from favorites';
+        } else {
+            this.favoriteButton.innerHTML = '☆'; // Empty star
+            this.favoriteButton.classList.remove('is-favorite');
+            this.favoriteButton.title = 'Add to favorites';
+        }
+    }
+
+    /**
+     * Handle favorite toggled event
+     * @param {Object} data - The favorite toggled data
+     */
+    handleFavoriteToggled(data) {
+        if (data.nodeId === this.nodeData.id) {
+            // Update local node data
+            if (data.isFavorite) {
+                if (!this.nodeData.tags) this.nodeData.tags = [];
+                if (!this.nodeData.tags.includes('favorite')) {
+                    this.nodeData.tags.push('favorite');
+                }
+            } else {
+                if (this.nodeData.tags) {
+                    const index = this.nodeData.tags.indexOf('favorite');
+                    if (index !== -1) {
+                        this.nodeData.tags.splice(index, 1);
+                    }
+                }
+            }
+            this.updateFavoriteState();
+        }
+    }
+
+    /**
+     * Handle favorite added event
+     * @param {Object} data - The favorite added data
+     */
+    handleFavoriteAdded(data) {
+        if (data.nodeId === this.nodeData.id) {
+            if (!this.nodeData.tags) this.nodeData.tags = [];
+            if (!this.nodeData.tags.includes('favorite')) {
+                this.nodeData.tags.push('favorite');
+            }
+            this.updateFavoriteState();
+        }
+    }
+
+    /**
+     * Handle favorite removed event
+     * @param {Object} data - The favorite removed data
+     */
+    handleFavoriteRemoved(data) {
+        if (data.nodeId === this.nodeData.id) {
+            if (this.nodeData.tags) {
+                const index = this.nodeData.tags.indexOf('favorite');
+                if (index !== -1) {
+                    this.nodeData.tags.splice(index, 1);
+                }
+            }
+            this.updateFavoriteState();
         }
     }
 }
