@@ -29,7 +29,10 @@
       "Bash(npx vitest:*)",
       "Bash(timeout 30 npx vitest run view_components_TreeNode.test.js)",
       "Bash(timeout 30 npx vitest run type_indicator_feature.test.js)",
-      "Bash(timeout 60 npm test)"
+      "Bash(timeout 60 npm test)",
+      "Bash(timeout 30 npm test -- --run)",
+      "Bash(timeout 30 npx vitest run)",
+      "Bash(timeout 30 npx vitest run breadcrumb_simplified.test.js)"
     ],
     "deny": []
   }

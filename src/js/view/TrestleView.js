@@ -146,19 +146,7 @@ export default class TrestleView {
                 this.renderTree();
                 this.updateBreadcrumb();
                 
-                // Emit breadcrumb update for root view
-                if (this.breadcrumb && this.eventBus) {
-                    const rootNode = Object.values(this.allNodes).find(n => n.type === 'RootNode');
-                    if (rootNode) {
-                        this.eventBus.emit('breadcrumb:update', { 
-                            node: { 
-                                id: 'root',
-                                title: 'Home',
-                                path: []
-                            } 
-                        });
-                    }
-                }
+                // Breadcrumb will initialize to show "Home" by default
             }
         });
         
@@ -172,19 +160,7 @@ export default class TrestleView {
                 this.renderTree();
                 this.updateBreadcrumb();
                 
-                // Emit breadcrumb update for root view
-                if (this.breadcrumb && this.eventBus) {
-                    const rootNode = Object.values(this.allNodes).find(n => n.type === 'RootNode');
-                    if (rootNode) {
-                        this.eventBus.emit('breadcrumb:update', { 
-                            node: { 
-                                id: 'root',
-                                title: 'Home',
-                                path: []
-                            } 
-                        });
-                    }
-                }
+                // Breadcrumb will initialize to show "Home" by default
             }
         });
         
@@ -656,32 +632,11 @@ export default class TrestleView {
         // Emit navigation event for NavigationControls to track history
         this.eventBus.emit('navigate', { nodeId });
         
-        // [CASCADE] Emit breadcrumb:update event for new Breadcrumb component
-        if (this.breadcrumb && this.eventBus) {
-            let path = [];
-            let currentNodeId = this.currentZoomNodeId;
-            const maxDepth = 20; // Prevent infinite loops
-            let depth = 0;
-            
-            while (currentNodeId && this.allNodes[currentNodeId] && depth < maxDepth) {
-                const node = this.allNodes[currentNodeId];
-                path.unshift({
-                    id: node.id,
-                    title: node.title || 'Untitled'
-                });
-                currentNodeId = node.parent || null;
-                depth++;
-            }
-            
-            console.log('[CASCADE][TrestleView] Emitting breadcrumb:update with path:', path);
-            this.eventBus.emit('breadcrumb:update', { 
-                node: { 
-                    id: this.currentZoomNodeId,
-                    title: this.allNodes[this.currentZoomNodeId]?.title || 'Untitled',
-                    path: path
-                } 
-            });
-        }
+        // Emit zoom event for breadcrumb
+        this.eventBus.emit('view:zoomedIn', { 
+            nodeId, 
+            nodeTitle: this.allNodes[nodeId]?.title || 'Untitled'
+        });
         this.updateBreadcrumb();
     }
 
@@ -691,6 +646,9 @@ export default class TrestleView {
             // Emit navigation event for NavigationControls to track history
             this.eventBus.emit('navigate', { nodeId: 'root' });
             this.eventBus.emit('model:loaded', { nodes: Object.values(this.allNodes) });
+            
+            // Emit zoom out event for breadcrumb
+            this.eventBus.emit('view:zoomedOut', { nodeId: 'root' });
         } else {
             this.zoomInToNode(nodeId);
         }

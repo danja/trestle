@@ -7,24 +7,38 @@
     color: #888;
 }
 
+.breadcrumb-list {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+}
+
 .breadcrumb-link {
     color: #3a7ca5;
     text-decoration: none;
-    margin: 0 2px;
     font-weight: 500;
+    transition: color 0.15s ease;
 }
 
 .breadcrumb-link:hover {
+    color: #2c5f7a;
     text-decoration: underline;
 }
 
 .breadcrumb-separator {
-    margin: 0 4px;
+    margin: 0 8px;
     color: #bbb;
+    font-size: 0.9em;
 }
 
 .breadcrumb-current {
     color: #444;
     font-weight: 600;
-    margin-left: 2px;
 }
