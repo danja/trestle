@@ -7,7 +7,7 @@ describe('TreeNode', () => {
   });
 
   it('should emit view:deleteNode on delete button click', () => {
-    const eventBus = { emit: vi.fn() };
+    const eventBus = { emit: vi.fn(), on: vi.fn() };
     const node = { id: 'n1', label: 'Test' };
     // Create a template with the required structure
     const template = document.createElement('template');

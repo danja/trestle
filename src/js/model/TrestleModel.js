@@ -414,7 +414,8 @@ export class TrestleModel {
      */
     toTurtle() {
         let turtle = `@prefix dc: <${Config.PREFIXES.dc}> .\n`
-        turtle += `@prefix ts: <${Config.PREFIXES.ts}> .\n\n`
+        turtle += `@prefix ts: <${Config.PREFIXES.ts}> .\n`
+        turtle += `@prefix prj: <${Config.PREFIXES.prj}> .\n\n`
 
         // Add root node
         const rootNode = this.nodes.get(this.rootId)
@@ -427,8 +428,10 @@ export class TrestleModel {
             // Skip root
             if (id === this.rootId) continue
 
-            if (node.type === 'Node') {
-                turtle += `<${this.baseUri}${node.id}> a ts:Node;\n`
+            if (node.type === 'Node' || node.type) {
+                // Use the node's RDF type or default to ts:Node
+                const rdfType = this.getRdfTypeForNode(node);
+                turtle += `<${this.baseUri}${node.id}> a ${rdfType};\n`
 
                 // Add title
                 if (node.title) {
@@ -753,6 +756,47 @@ export class TrestleModel {
      */
     getFavoriteNodes() {
         return this.getNodesByTag('favorite')
+    }
+
+    /**
+     * Get the RDF type for a node in prefixed form
+     * @param {Object} node - The node object
+     * @returns {string} The RDF type in prefixed form (e.g., 'prj:Project')
+     */
+    getRdfTypeForNode(node) {
+        if (node.type && node.type !== 'Node') {
+            // If the node has a specific type set, use it
+            return node.type;
+        }
+        // Default to ts:Node
+        return 'ts:Node';
+    }
+
+    /**
+     * Set the RDF type for a node
+     * @param {string} nodeId - The node ID
+     * @param {string} rdfType - The RDF type in prefixed form (e.g., 'prj:Project')
+     * @param {string} rdfTypeUri - The full RDF type URI
+     * @returns {boolean} Success indicator
+     */
+    setNodeType(nodeId, rdfType, rdfTypeUri) {
+        const node = this.getNode(nodeId);
+        if (!node) {
+            console.warn(`Node ${nodeId} not found for setting type`);
+            return false;
+        }
+
+        node.type = rdfType;
+        node.typeUri = rdfTypeUri;
+
+        // Emit event for type change
+        this.eventBus.emit('node:typeChanged', { 
+            nodeId, 
+            type: rdfType, 
+            typeUri: rdfTypeUri 
+        });
+
+        return true;
     }
 }
 

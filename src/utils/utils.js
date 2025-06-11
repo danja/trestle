@@ -10,7 +10,8 @@ export const namespaces = {
     dc: 'http://purl.org/dc/terms/',
     foaf: 'http://xmlns.com/foaf/0.1/',
     squirt: 'http://purl.org/stuff/squirt#',
-    ts: 'http://purl.org/stuff/trestle#'
+    ts: 'http://purl.org/stuff/trestle#',
+    prj: 'http://purl.org/stuff/project/'
 }
 
 /**

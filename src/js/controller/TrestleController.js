@@ -81,6 +81,9 @@ export class TrestleController {
         this.eventBus.on('favorites:add', this.handleAddFavorite.bind(this))
         this.eventBus.on('favorites:remove', this.handleRemoveFavorite.bind(this))
         this.eventBus.on('favorites:get', this.handleGetFavorites.bind(this))
+
+        // Type events
+        this.eventBus.on('view:setNodeType', this.handleSetNodeType.bind(this))
     }
 
     /**
@@ -531,6 +534,42 @@ export class TrestleController {
         } catch (error) {
             console.error('Error getting favorites:', error)
             this.eventBus.emit('favorites:error', {
+                error: error.message,
+                timestamp: Date.now()
+            })
+        }
+    }
+
+    /**
+     * Handle set node type requests
+     * @param {Object} data - The type data
+     */
+    handleSetNodeType(data) {
+        const { nodeId, type, typeUri } = data
+
+        if (!nodeId || !type) {
+            console.warn('Missing nodeId or type for set node type')
+            return
+        }
+
+        try {
+            const success = this.model.setNodeType(nodeId, type, typeUri)
+            
+            if (success) {
+                console.log(`Node ${nodeId} type set to ${type}`)
+                
+                // Emit success event
+                this.eventBus.emit('node:typeSet', {
+                    nodeId,
+                    type,
+                    typeUri,
+                    timestamp: Date.now()
+                })
+            }
+        } catch (error) {
+            console.error('Error setting node type:', error)
+            this.eventBus.emit('node:typeError', {
+                nodeId,
                 error: error.message,
                 timestamp: Date.now()
             })

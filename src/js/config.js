@@ -12,8 +12,31 @@ export const Config = {
     // RDF prefixes
     PREFIXES: {
         dc: 'http://purl.org/dc/terms/',
-        ts: 'http://purl.org/stuff/trestle/'
+        ts: 'http://purl.org/stuff/trestle/',
+        prj: 'http://purl.org/stuff/project/'
     },
+
+    // Available RDF types for nodes
+    RDF_TYPES: [
+        {
+            uri: 'http://purl.org/stuff/project/Project',
+            label: 'Project',
+            prefix: 'prj:Project',
+            description: 'A project with goals and deliverables'
+        },
+        {
+            uri: 'http://purl.org/stuff/project/Task',
+            label: 'Task', 
+            prefix: 'prj:Task',
+            description: 'A specific task or action item'
+        },
+        {
+            uri: 'http://purl.org/stuff/trestle/Node',
+            label: 'Generic Item',
+            prefix: 'ts:Node',
+            description: 'Default generic node type'
+        }
+    ],
 
     // Application settings
     AUTO_SAVE: false,

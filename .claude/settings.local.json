@@ -24,7 +24,12 @@
       "mcp__playwright__browser_type",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "mcp__playwright__browser_hover"
+      "mcp__playwright__browser_hover",
+      "Bash(rg:*)",
+      "Bash(npx vitest:*)",
+      "Bash(timeout 30 npx vitest run view_components_TreeNode.test.js)",
+      "Bash(timeout 30 npx vitest run type_indicator_feature.test.js)",
+      "Bash(timeout 60 npm test)"
     ],
     "deny": []
   }

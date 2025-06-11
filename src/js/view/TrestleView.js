@@ -11,6 +11,8 @@ import { RightPanel } from './components/RightPanel.js'; // Import RightPanel co
 import { NavigationControls } from './components/NavigationControls.js'; // Import NavigationControls component
 import { SearchBar } from './components/SearchBar.js'; // Import SearchBar component
 import { Favorites } from './components/Favorites.js'; // Import Favorites component
+import { TypeSelector } from './components/TypeSelector.js'; // Import TypeSelector component
+import { TypeService } from '../../domain/services/TypeService.js'; // Import TypeService
 
 export default class TrestleView {
     constructor(rootElement, eventBus) {
@@ -32,7 +34,9 @@ export default class TrestleView {
                 this.navigationControls = new NavigationControls(document.body, eventBus);
                 this.searchBar = new SearchBar(document.body, eventBus);
                 this.favorites = new Favorites(document.body, eventBus);
-                console.log('[TrestleView] RightPanel, NavigationControls, SearchBar, and Favorites initialized successfully');
+                this.typeService = new TypeService(eventBus);
+                this.typeSelector = new TypeSelector(eventBus);
+                console.log('[TrestleView] RightPanel, NavigationControls, SearchBar, Favorites, and TypeSelector initialized successfully');
                 
                 // Verify RightPanel initialization
                 if (this.rightPanel) {
@@ -254,6 +258,10 @@ export default class TrestleView {
         this.eventBus.on('search:results', this.handleSearchResults.bind(this));
         this.eventBus.on('search:cleared', this.handleSearchCleared.bind(this));
         this.eventBus.on('search:error', this.handleSearchError.bind(this));
+
+        // Type selector event listeners
+        this.eventBus.on('view:showTypeSelector', this.handleShowTypeSelector.bind(this));
+        this.eventBus.on('view:setNodeType', this.handleSetNodeType.bind(this));
         
         // Log events for debugging
         console.log('[TrestleView] Event handlers set up');
@@ -851,6 +859,40 @@ export default class TrestleView {
                 }
             }, 300);
         }, 3000);
+    }
+
+    /**
+     * Handle show type selector event
+     * @param {Object} data - The event data
+     */
+    handleShowTypeSelector(data) {
+        const { nodeId, buttonElement, currentType } = data;
+        if (this.typeSelector) {
+            this.typeSelector.showTypeDropdown(nodeId, buttonElement, currentType);
+        }
+    }
+
+    /**
+     * Handle set node type event
+     * @param {Object} data - The event data
+     */
+    handleSetNodeType(data) {
+        const { nodeId, type, typeUri } = data;
+        
+        // Update the node data locally
+        if (this.allNodes && this.allNodes[nodeId]) {
+            this.allNodes[nodeId].type = type;
+            this.allNodes[nodeId].typeUri = typeUri;
+        }
+        
+        // Emit to controller to update backend
+        this.eventBus.emit('view:updateNode', {
+            nodeId,
+            properties: {
+                type,
+                typeUri
+            }
+        });
     }
 }
 

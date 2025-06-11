@@ -17,11 +17,15 @@ export class TreeNode {
         this.template = template;
         this.element = null;
         this.favoriteButton = null;
+        this.typeButton = null;
         
         // Listen for favorite state changes
         this.eventBus.on('favorites:toggled', this.handleFavoriteToggled.bind(this));
         this.eventBus.on('favorites:added', this.handleFavoriteAdded.bind(this));
         this.eventBus.on('favorites:removed', this.handleFavoriteRemoved.bind(this));
+        
+        // Listen for type changes
+        this.eventBus.on('view:setNodeType', this.handleNodeTypeSet.bind(this));
     }
 
     /**
@@ -72,6 +76,24 @@ export class TreeNode {
             });
         }
         // --- End add child button event listener ---
+
+        // --- Add type button event listener ---
+        const typeButton = entry.querySelector('.ts-type');
+        if (typeButton) {
+            typeButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                this.eventBus.emit('view:showTypeSelector', { 
+                    nodeId: id, 
+                    buttonElement: typeButton,
+                    currentType: this.nodeData.type || 'ts:Node'
+                });
+            });
+            
+            // Store reference to type button and update its appearance
+            this.typeButton = typeButton;
+            this.updateTypeButton();
+        }
+        // --- End type button event listener ---
 
         // --- Add favorite button ---
         const favoriteButton = document.createElement('button');
@@ -284,6 +306,57 @@ export class TreeNode {
                 }
             }
             this.updateFavoriteState();
+        }
+    }
+
+    /**
+     * Handle node type set event
+     * @param {Object} data - The event data
+     */
+    handleNodeTypeSet(data) {
+        if (data.nodeId === this.nodeData.id) {
+            // Update node data
+            this.nodeData.type = data.type;
+            this.nodeData.typeUri = data.typeUri;
+            
+            // Update type button appearance
+            this.updateTypeButton();
+        }
+    }
+
+    /**
+     * Update the type button appearance based on current node type
+     */
+    updateTypeButton() {
+        if (!this.typeButton) return;
+
+        const nodeType = this.nodeData.type || 'ts:Node';
+        const typeIcons = {
+            'prj:Project': '📁',
+            'prj:Task': '✓', 
+            'ts:Node': '🏷️'
+        };
+
+        const typeLabels = {
+            'prj:Project': 'Project',
+            'prj:Task': 'Task',
+            'ts:Node': 'Set type'
+        };
+
+        // Get icon and label for current type
+        const icon = typeIcons[nodeType] || '🏷️';
+        const label = typeLabels[nodeType] || 'Set type';
+
+        // Update button content and attributes
+        this.typeButton.textContent = icon;
+        this.typeButton.setAttribute('aria-label', label);
+        this.typeButton.title = `${label} (${nodeType})`;
+
+        // Add CSS class to indicate type state
+        if (nodeType !== 'ts:Node') {
+            this.typeButton.classList.add('ts-type-set');
+        } else {
+            this.typeButton.classList.remove('ts-type-set');
         }
     }
 }
