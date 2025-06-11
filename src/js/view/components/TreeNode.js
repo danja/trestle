@@ -63,6 +63,16 @@ export class TreeNode {
         }
         // --- End delete button event listener ---
 
+        // --- Add child button event listener ---
+        const addChildButton = entry.querySelector('.ts-addChild');
+        if (addChildButton) {
+            addChildButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                this.eventBus.emit('view:addChild', { parentId: id });
+            });
+        }
+        // --- End add child button event listener ---
+
         // --- Add favorite button ---
         const favoriteButton = document.createElement('button');
         favoriteButton.className = 'ts-favorite';
