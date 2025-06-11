@@ -32,7 +32,10 @@
       "Bash(timeout 60 npm test)",
       "Bash(timeout 30 npm test -- --run)",
       "Bash(timeout 30 npx vitest run)",
-      "Bash(timeout 30 npx vitest run breadcrumb_simplified.test.js)"
+      "Bash(timeout 30 npx vitest run breadcrumb_simplified.test.js)",
+      "Bash(timeout 30 npx vitest run drag_outdent.test.js)",
+      "Bash(timeout 60 npx vitest run:*)",
+      "Bash(timeout 30 npx vitest run drag_indent_comprehensive.test.js)"
     ],
     "deny": []
   }

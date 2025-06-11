@@ -205,20 +205,11 @@ export class DragDropHandler {
 
         if (!dropzone) return;
 
-        // Debug log for dragover
         const targetLi = dropzone.closest('li');
         let dropPosition = null;
         if (targetLi) {
             dropPosition = event.offsetX / targetLi.offsetWidth;
         }
-        console.log('[DragDropHandler] DragOver:', {
-            draggedNodeId: this.draggedNodeId,
-            dropzone,
-            targetLi: targetLi ? targetLi.dataset.nodeId : null,
-            dropPosition,
-            offsetX: event.offsetX,
-            offsetWidth: targetLi ? targetLi.offsetWidth : null
-        });
 
         dropzone.classList.add('active');
         dropzone.classList.remove('ts-drop-indent', 'ts-drop-outdent');
@@ -355,43 +346,34 @@ export class DragDropHandler {
         }
 
         // --- Updated logic: indent if dropped on rightmost 90% of any node ---
-        console.log('[DragDropHandler] Drop event:', {
-            draggedNodeId: this.draggedNodeId,
-            targetNodeId: targetLi.dataset.nodeId,
-            dropPosition,
-            offsetX: event.offsetX,
-            offsetWidth: targetLi.offsetWidth
-        });
         if (dropPosition > 0.1) {
-            // Indent: move as last child of targetLi
-            const newParentId = targetLi.dataset.nodeId;
-            let childUl = targetLi.querySelector('ul');
-            if (!childUl) {
-                childUl = document.createElement('ul');
-                targetLi.appendChild(childUl);
-                targetLi.classList.remove('ts-closed');
-                targetLi.classList.add('ts-open');
-            }
-
-            childUl.appendChild(draggedLi);
-
-            this.eventBus.emit('view:moveNode', {
-                nodeId: this.draggedNodeId,
-                newParentId,
-                newIndex: Array.from(childUl.children).indexOf(draggedLi)
+            // Indent: use proper indent logic like keyboard shortcut
+            this.eventBus.emit('view:indentNode', {
+                nodeId: this.draggedNodeId
             });
         } else {
-            // Outdent or move before target
-            const parentUl = targetLi.parentElement;
-            parentUl.insertBefore(draggedLi, targetLi);
+            // Check if this should be an outdent operation
+            const draggedCurrentParentLi = draggedLi.parentElement.closest('li');
+            
+            // If dragged node has a parent (not at root level), this is an outdent
+            if (draggedCurrentParentLi) {
+                // Emit outdent event - let the view handler deal with the DOM manipulation
+                this.eventBus.emit('view:outdentNode', {
+                    nodeId: this.draggedNodeId
+                });
+            } else {
+                // Node is already at root level, just move before target
+                const parentUl = targetLi.parentElement;
+                const newParentId = parentUl.closest('li')?.dataset.nodeId || 'trestle-root';
+                
+                parentUl.insertBefore(draggedLi, targetLi);
 
-            const newParentId = parentUl.closest('li')?.dataset.nodeId || 'trestle-root';
-
-            this.eventBus.emit('view:moveNode', {
-                nodeId: this.draggedNodeId,
-                newParentId,
-                newIndex: Array.from(parentUl.children).indexOf(draggedLi)
-            });
+                this.eventBus.emit('view:moveNode', {
+                    nodeId: this.draggedNodeId,
+                    newParentId,
+                    newIndex: Array.from(parentUl.children).indexOf(draggedLi)
+                });
+            }
         }
 
         this.draggedNodeId = null;
