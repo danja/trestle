@@ -1,4 +1,6 @@
 // src/js/main.js
+import '../css/trestle.css';
+import '../css/right-panel.css';
 import { TrestleModel } from './model/TrestleModel.js'
 import TrestleRDFModel from './model/TrestleRDFModel.js'
 import TrestleView from './view/index.js'

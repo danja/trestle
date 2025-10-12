@@ -42,15 +42,21 @@ Trestle is a web-based hierarchical todo list application with RDF/SPARQL backen
 
 3. Configure the application:
 
-   - Edit `js/config.js` to set your SPARQL endpoint URL and other preferences
+   - Edit `src/js/config.js` to set your SPARQL endpoint URL and other preferences
 
-4. Start the development server:
+4. Start the development server (powered by Vite on port 9090 by default):
 
    ```bash
    npm run dev
    ```
 
-5. Build for production:
+5. Preview the built app locally:
+
+   ```bash
+   npm run preview
+   ```
+
+6. Build for production (outputs to `dist/`):
    ```bash
    npm run build
    ```
@@ -94,6 +100,11 @@ Trestle uses RDF to represent the data structure with the following predicates:
 - `js/view/`: UI rendering and event handling
 - `js/controller/`: Application logic
 - `js/utils/`: Utility functions and helpers
+
+### Tooling
+
+- The app is bundled with [Vite](https://vitejs.dev/); the primary entry point is `index.html` at the project root and the application bootstrap lives in `src/js/main.js`.
+- Static assets and styles live under `src/css`; importing them from the JS entry ensures Vite includes them in the build output.
 
 ### Running Tests
 
