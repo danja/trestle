@@ -68,18 +68,18 @@ The project uses Vitest with jsdom environment:
 - Test files follow the pattern `*.test.js`
 - Global test utilities available (globals: true in vitest config)
 - Use `npm test:ui` for interactive testing interface
+- `npm test` runs the full suite in headless mode (Vitest CLI). The command can log verbose component diagnostics; allow up to ~10s for completion.
 
 ## Build System
 
-- Webpack is used for bundling and building
-- Babel for transpilation  
-- The entry point is `src/js/main.js`
-- CSS is processed and bundled separately
-- Development server runs on port 9090
-- Uses ES modules (type: "module" in package.json)
+- Vite handles dev server and production builds (`vite.config.js`)
+- Root HTML entry is `index.html`; JS bootstrap lives in `src/js/main.js`
+- Styles under `src/css/` are imported from `src/js/main.js` so Vite bundles them automatically
+- Development server (and preview) run on port 9090 by default (`npm run dev`, `npm run preview`)
+- Build output is emitted to `dist/`
 
 ## Configuration
 
 - SPARQL endpoint configuration is in `src/js/config.js`
-- Webpack configuration in `webpack.config.js`
+- Vite configuration in `vite.config.js`
 - JSDoc configuration in `jsdoc.json`

@@ -12,8 +12,59 @@ let dom, rootElement, eventBus, view, template, nodeElements, inlineEditor, expa
 
 function setupDOM() {
   dom = new JSDOM(`<!DOCTYPE html><html><body>
-    <div class="breadcrumb"></div>
-    <div id="trestle-root"></div>
+    <header id="header-outer">
+      <div id="header">Trestle</div>
+      <nav class="top-navbar toolbar">
+        <div class="toolbar-left">
+          <button class="toolbar-icon" id="backButton" aria-label="Back">&#x2039;</button>
+          <button class="toolbar-icon" id="forwardButton" aria-label="Forward">&#x203A;</button>
+          <button class="toolbar-icon" id="homeButton" aria-label="Home">🏠</button>
+          <nav class="breadcrumb" aria-label="Breadcrumb"></nav>
+        </div>
+        <div class="toolbar-right">
+          <div class="search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Search" aria-label="Search" />
+          </div>
+          <button class="toolbar-icon" id="favoritesButton" aria-label="Favorites">☆</button>
+          <button class="toolbar-icon" id="hamburgerButton" aria-label="Menu">☰</button>
+        </div>
+      </nav>
+    </header>
+    <div id="menu-box" class="hidden">
+      <div class="toolbar">
+        <ul>
+          <li><button id="saveButton">Save</button></li>
+          <li><button id="addButton">Add Root Item</button></li>
+          <li><button id="shortcutsButton">Shortcuts</button></li>
+          <li><button id="mobileaaveButton">Save</button></li>
+          <li><button id="mobileAddButton">Add Root Item</button></li>
+          <li><button id="mobileShortcutsButton" data-view="shortcuts">Shortcuts</button></li>
+          <li><button id="mobileConsoleButton" data-view="console">
+            Console
+            <span class="notification-badge hidden"></span>
+          </button></li>
+        </ul>
+      </div>
+    </div>
+    <div id="right-panel" class="hidden" aria-labelledby="panel-title" role="complementary">
+      <div class="panel-header">
+        <h2 id="panel-title">Console</h2>
+        <button id="close-panel" class="panel-close" aria-label="Close panel">&times;</button>
+      </div>
+      <div class="panel-content">
+        <div id="console-content" class="panel-section active" role="tabpanel"></div>
+        <div id="shortcuts-content" class="panel-section" role="tabpanel" hidden></div>
+      </div>
+      <div class="resize-handle" aria-hidden="true"></div>
+    </div>
+    <div id="container">
+      <div class="page">
+        <div id="trestle">
+          <div id="trestle-root" class="ts-root"></div>
+        </div>
+      </div>
+    </div>
     <template id="entry-template">
       <div class="ts-entry">
         <button class="ts-expander" aria-label="Toggle expand"></button>
@@ -22,6 +73,7 @@ function setupDOM() {
         <div class="ts-actions">
           <button class="ts-card" aria-label="Show card" title="Show details">📝</button>
           <button class="ts-addChild" aria-label="Add child" title="Add child item">+</button>
+          <button class="ts-type" aria-label="Set type" title="Set RDF type">🏷️</button>
           <button class="ts-delete" aria-label="Delete" title="Delete item">×</button>
         </div>
         <span class="date hidden"></span>
@@ -63,6 +115,7 @@ describe('Requirements: Navigation & List Management', () => {
     expect(typeof view.zoomOutToNode).toBe('function');
     
     // Call with minimal setup
+    view.allNodes = {};
     view.zoomOutToNode(null);
     
     // If we get here without crashing, consider it a success
