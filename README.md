@@ -30,7 +30,7 @@ Trestle is a web-based hierarchical todo list application with RDF/SPARQL backen
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/trestle.git
+   git clone https://github.com/danja/trestle.git
    cd trestle
    ```
 
