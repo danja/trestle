@@ -19,6 +19,8 @@ describe('Type Indicator Feature', () => {
         template = document.createElement('template')
         template.innerHTML = `
             <div class="ts-entry">
+                <button class="ts-expander" aria-label="Toggle expand"></button>
+                <span class="ts-type-icon" aria-hidden="true"></span>
                 <span class="ts-title"></span>
                 <span class="date"></span>
                 <button class="ts-type" aria-label="Set type" title="Set RDF type">🏷️</button>
@@ -44,10 +46,14 @@ describe('Type Indicator Feature', () => {
         treeNode.render(parent)
         
         const typeButton = parent.querySelector('.ts-type')
+        const typeIcon = parent.querySelector('.ts-type-icon')
         expect(typeButton).toBeDefined()
         expect(typeButton.textContent).toBe('🏷️')
         expect(typeButton.title).toContain('Set type')
         expect(typeButton.classList.contains('ts-type-set')).toBe(false)
+        expect(typeIcon).toBeDefined()
+        expect(typeIcon.classList.contains('is-visible')).toBe(false)
+        expect(typeIcon.classList.contains('ts-type-icon--generic')).toBe(false)
     })
 
     test('should show project icon for prj:Project type', () => {
@@ -57,9 +63,13 @@ describe('Type Indicator Feature', () => {
         treeNode.render(parent)
         
         const typeButton = parent.querySelector('.ts-type')
+        const typeIcon = parent.querySelector('.ts-type-icon')
         expect(typeButton.textContent).toBe('📁')
         expect(typeButton.title).toContain('Project (prj:Project)')
         expect(typeButton.classList.contains('ts-type-set')).toBe(true)
+        expect(typeIcon.classList.contains('is-visible')).toBe(true)
+        expect(typeIcon.classList.contains('ts-type-icon--project')).toBe(true)
+        expect(typeIcon.dataset.type).toBe('prj:Project')
     })
 
     test('should show task icon for prj:Task type', () => {
@@ -69,9 +79,13 @@ describe('Type Indicator Feature', () => {
         treeNode.render(parent)
         
         const typeButton = parent.querySelector('.ts-type')
+        const typeIcon = parent.querySelector('.ts-type-icon')
         expect(typeButton.textContent).toBe('✓')
         expect(typeButton.title).toContain('Task (prj:Task)')
         expect(typeButton.classList.contains('ts-type-set')).toBe(true)
+        expect(typeIcon.classList.contains('is-visible')).toBe(true)
+        expect(typeIcon.classList.contains('ts-type-icon--task')).toBe(true)
+        expect(typeIcon.dataset.type).toBe('prj:Task')
     })
 
     test('should emit type selector event when type button clicked', () => {
@@ -104,9 +118,12 @@ describe('Type Indicator Feature', () => {
         })
         
         const typeButton = parent.querySelector('.ts-type')
+        const typeIcon = parent.querySelector('.ts-type-icon')
         expect(typeButton.textContent).toBe('📁')
         expect(typeButton.classList.contains('ts-type-set')).toBe(true)
         expect(nodeData.type).toBe('prj:Project')
+        expect(typeIcon.classList.contains('ts-type-icon--project')).toBe(true)
+        expect(typeIcon.dataset.type).toBe('prj:Project')
     })
 
     test('should handle unknown type gracefully', () => {
@@ -116,8 +133,12 @@ describe('Type Indicator Feature', () => {
         treeNode.render(parent)
         
         const typeButton = parent.querySelector('.ts-type')
+        const typeIcon = parent.querySelector('.ts-type-icon')
         expect(typeButton.textContent).toBe('🏷️') // Falls back to default icon
         expect(typeButton.title).toContain('Set type (custom:UnknownType)')
         expect(typeButton.classList.contains('ts-type-set')).toBe(true) // Still marked as set
+        expect(typeIcon.classList.contains('ts-type-icon--generic')).toBe(true)
+        expect(typeIcon.classList.contains('is-visible')).toBe(true)
+        expect(typeIcon.dataset.type).toBe('custom:UnknownType')
     })
 })

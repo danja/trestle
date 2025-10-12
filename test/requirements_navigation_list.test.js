@@ -68,6 +68,7 @@ function setupDOM() {
     <template id="entry-template">
       <div class="ts-entry">
         <button class="ts-expander" aria-label="Toggle expand"></button>
+        <span class="ts-type-icon" aria-hidden="true"></span>
         <div class="ts-handle" aria-hidden="true">⋮</div>
         <div class="ts-title" contenteditable="true"></div>
         <div class="ts-actions">

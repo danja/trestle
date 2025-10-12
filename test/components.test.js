@@ -20,11 +20,13 @@ const dom = new JSDOM(`<!DOCTYPE html>
   <template id="entry-template">
     <div class="ts-entry">
       <button class="ts-expander" aria-label="Toggle expand"></button>
+      <span class="ts-type-icon" aria-hidden="true"></span>
       <div class="ts-handle" aria-hidden="true">⋮</div>
       <div class="ts-title" contenteditable="true"></div>
       <div class="ts-actions">
         <button class="ts-card" aria-label="Show card" title="Show details">📝</button>
         <button class="ts-addChild" aria-label="Add child" title="Add child item">+</button>
+        <button class="ts-type" aria-label="Set type" title="Set RDF type">🏷️</button>
         <button class="ts-delete" aria-label="Delete" title="Delete item">×</button>
       </div>
       <span class="date hidden"></span>

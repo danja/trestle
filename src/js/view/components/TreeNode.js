@@ -2,6 +2,30 @@
  * TreeNode component
  * Handles the rendering and functionality of an individual node in the tree
  */
+const TYPE_DISPLAY_CONFIG = {
+    'prj:Project': {
+        buttonIcon: '📁',
+        label: 'Project',
+        indicatorClass: 'ts-type-icon--project'
+    },
+    'prj:Task': {
+        buttonIcon: '✓',
+        label: 'Task',
+        indicatorClass: 'ts-type-icon--task'
+    },
+    'ts:Node': {
+        buttonIcon: '🏷️',
+        label: 'Set type',
+        indicatorClass: 'ts-type-icon--generic'
+    }
+};
+
+const DEFAULT_TYPE_DISPLAY = {
+    buttonIcon: '🏷️',
+    label: 'Set type',
+    indicatorClass: 'ts-type-icon--generic'
+};
+
 export class TreeNode {
     /**
      * Create a new TreeNode
@@ -18,6 +42,7 @@ export class TreeNode {
         this.element = null;
         this.favoriteButton = null;
         this.typeButton = null;
+        this.typeIconElement = null;
         
         // Listen for favorite state changes
         this.eventBus.on('favorites:toggled', this.handleFavoriteToggled.bind(this));
@@ -47,6 +72,11 @@ export class TreeNode {
         // Clone the template and customize it
         const entry = this.template.content.cloneNode(true).querySelector('.ts-entry');
         entry.id = id;
+        this.typeIconElement = entry.querySelector('.ts-type-icon') || null;
+
+        const normalizedType = this.getNormalizedType();
+        this.applyTypeAttributes(normalizedType, entry, li);
+        this.updateTypeIndicator(normalizedType);
 
         const titleElement = entry.querySelector('.ts-title');
         titleElement.textContent = title || '';
@@ -162,6 +192,69 @@ export class TreeNode {
     }
 
     /**
+     * Get the normalized RDF type for the node
+     * @returns {string|null} The normalized type or null if no RDF type is set
+     */
+    getNormalizedType() {
+        const rawType = this.nodeData?.type;
+        if (!rawType || rawType === 'Node' || rawType === 'RootNode') {
+            return null;
+        }
+        return rawType;
+    }
+
+    /**
+     * Apply type-related data attributes to entry and container elements
+     * @param {string|null} nodeType - The normalized node type
+     * @param {HTMLElement} [entryElement] - The entry element to update
+     * @param {HTMLElement} [containerElement] - The container (li) element to update
+     */
+    applyTypeAttributes(nodeType, entryElement = null, containerElement = null) {
+        const entry = entryElement || document.getElementById(this.nodeData.id);
+        const container = containerElement || this.element;
+
+        if (entry) {
+            if (nodeType) {
+                entry.dataset.nodeType = nodeType;
+            } else {
+                delete entry.dataset.nodeType;
+            }
+        }
+
+        if (container) {
+            if (nodeType) {
+                container.dataset.nodeType = nodeType;
+            } else {
+                delete container.dataset.nodeType;
+            }
+        }
+    }
+
+    /**
+     * Update the inline type indicator icon
+     * @param {string|null} normalizedType - Normalized RDF type for the node
+     */
+    updateTypeIndicator(normalizedType = this.getNormalizedType()) {
+        if (!this.typeIconElement) return;
+
+        this.typeIconElement.className = 'ts-type-icon';
+
+        if (normalizedType) {
+            const display = TYPE_DISPLAY_CONFIG[normalizedType] || DEFAULT_TYPE_DISPLAY;
+            if (display.indicatorClass) {
+                this.typeIconElement.classList.add(display.indicatorClass);
+            }
+            this.typeIconElement.classList.add('is-visible');
+            this.typeIconElement.dataset.type = normalizedType;
+            const label = display.label || 'Typed node';
+            this.typeIconElement.title = `${label} (${normalizedType})`;
+        } else {
+            delete this.typeIconElement.dataset.type;
+            this.typeIconElement.removeAttribute('title');
+        }
+    }
+
+    /**
      * Update the node with new data
      * @param {Object} properties - The properties to update
      */
@@ -175,6 +268,17 @@ export class TreeNode {
             const titleElement = entry.querySelector('.ts-title');
             titleElement.textContent = properties.title;
             this.nodeData.title = properties.title;
+        }
+
+        if (properties.type !== undefined) {
+            this.nodeData.type = properties.type;
+            if (properties.typeUri !== undefined) {
+                this.nodeData.typeUri = properties.typeUri;
+            }
+            const normalizedType = this.getNormalizedType();
+            this.applyTypeAttributes(normalizedType);
+            this.updateTypeButton();
+            this.updateTypeIndicator(normalizedType);
         }
     }
 
@@ -318,9 +422,11 @@ export class TreeNode {
             // Update node data
             this.nodeData.type = data.type;
             this.nodeData.typeUri = data.typeUri;
-            
+            const normalizedType = this.getNormalizedType();
+            this.applyTypeAttributes(normalizedType);
             // Update type button appearance
             this.updateTypeButton();
+            this.updateTypeIndicator(normalizedType);
         }
     }
 
@@ -330,30 +436,19 @@ export class TreeNode {
     updateTypeButton() {
         if (!this.typeButton) return;
 
-        const nodeType = this.nodeData.type || 'ts:Node';
-        const typeIcons = {
-            'prj:Project': '📁',
-            'prj:Task': '✓', 
-            'ts:Node': '🏷️'
-        };
-
-        const typeLabels = {
-            'prj:Project': 'Project',
-            'prj:Task': 'Task',
-            'ts:Node': 'Set type'
-        };
-
-        // Get icon and label for current type
-        const icon = typeIcons[nodeType] || '🏷️';
-        const label = typeLabels[nodeType] || 'Set type';
+        const normalizedType = this.getNormalizedType();
+        const buttonTypeKey = normalizedType || 'ts:Node';
+        const display = TYPE_DISPLAY_CONFIG[buttonTypeKey] || DEFAULT_TYPE_DISPLAY;
+        const label = display.label || 'Set type';
 
         // Update button content and attributes
-        this.typeButton.textContent = icon;
+        this.typeButton.textContent = display.buttonIcon || DEFAULT_TYPE_DISPLAY.buttonIcon;
         this.typeButton.setAttribute('aria-label', label);
-        this.typeButton.title = `${label} (${nodeType})`;
+        const titleType = normalizedType || 'ts:Node';
+        this.typeButton.title = `${label} (${titleType})`;
 
         // Add CSS class to indicate type state
-        if (nodeType !== 'ts:Node') {
+        if (normalizedType) {
             this.typeButton.classList.add('ts-type-set');
         } else {
             this.typeButton.classList.remove('ts-type-set');

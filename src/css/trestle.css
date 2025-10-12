@@ -623,6 +623,46 @@
     font-weight: bold;
 }
 
+.ts-type-icon {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin: 0 6px 0 2px;
+    background-color: transparent;
+    border: 2px solid transparent;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+.ts-type-icon.is-visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.ts-type-icon--project {
+    background-color: #4c6ef5;
+    border-color: rgba(76, 110, 245, 0.35);
+    box-shadow: 0 0 0 1px rgba(76, 110, 245, 0.25);
+}
+
+.ts-type-icon--task {
+    background-color: #2e7d32;
+    border-color: rgba(46, 125, 50, 0.35);
+    box-shadow: 0 0 0 1px rgba(46, 125, 50, 0.25);
+}
+
+.ts-type-icon--generic {
+    background-color: #9e9e9e;
+    border-color: rgba(158, 158, 158, 0.35);
+    box-shadow: 0 0 0 1px rgba(158, 158, 158, 0.2);
+}
+
 .ts-closed>ul {
     display: none;
 }
@@ -714,12 +754,17 @@
     line-height: 1.5;
 }
 
-/* Add bullet marker for items without children */
-.ts-closed:not(:has(ul))>.ts-entry>.ts-expander::before {
+/* Add bullet marker for untyped items without children */
+.ts-closed:not(:has(ul))>.ts-entry:not([data-node-type])>.ts-expander::before {
     content: "•";
     opacity: 0.8;
     color: #444;
     font-size: 14px;
+}
+
+/* Hide arrows for typed leaf nodes */
+.ts-closed:not(:has(ul))>.ts-entry[data-node-type]>.ts-expander::before {
+    content: "";
 }
 
 /* Contextual add button - only shows when hovering between items */

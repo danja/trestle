@@ -13,7 +13,7 @@ describe('TrestleView', () => {
     // Set up a template in the document for TrestleView
     const template = document.createElement('template');
     template.id = 'entry-template';
-    template.innerHTML = '<div class="ts-entry"><span class="ts-title"></span><span class="date"></span><button class="ts-delete"></button></div>';
+    template.innerHTML = '<div class="ts-entry"><button class="ts-expander"></button><span class="ts-type-icon" aria-hidden="true"></span><span class="ts-title"></span><span class="date"></span><button class="ts-type"></button><button class="ts-delete"></button></div>';
     document.body.appendChild(template);
     // Patch TrestleView to accept eventBus as second argument
     const view = new TrestleView(rootElement, eventBus);

@@ -11,7 +11,7 @@ describe('TreeNode', () => {
     const node = { id: 'n1', label: 'Test' };
     // Create a template with the required structure
     const template = document.createElement('template');
-    template.innerHTML = '<div class="ts-entry"><span class="ts-title"></span><span class="date"></span><button class="ts-delete"></button></div>';
+    template.innerHTML = '<div class="ts-entry"><button class="ts-expander"></button><span class="ts-type-icon" aria-hidden="true"></span><span class="ts-title"></span><span class="date"></span><button class="ts-type"></button><button class="ts-delete"></button></div>';
     // Use the template for the TreeNode
     const parent = document.createElement('ul');
     document.body.appendChild(parent);
