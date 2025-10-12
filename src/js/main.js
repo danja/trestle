@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('EventLogger initialized');
 
     // Initialize the model, view, and controller
-    const model = new TrestleRDFModel(Config.SPARQL_ENDPOINT, Config.BASE_URI, eventBus)
+    const model = new TrestleRDFModel(Config.SPARQL_ENDPOINTS, Config.BASE_URI, eventBus)
     console.log('TrestleModel initialized')
 
     const view = new TrestleView(document.getElementById('trestle-root'), eventBus)

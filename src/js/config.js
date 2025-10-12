@@ -1,13 +1,41 @@
+import runtimeConfig from '../../config/config.json'
+
+const DEFAULT_SPARQL_QUERY_ENDPOINT = 'http://localhost:3030/trestle/query'
+const DEFAULT_SPARQL_UPDATE_ENDPOINT = 'http://localhost:3030/trestle/update'
+
+const resolveBoolean = (value, fallback) =>
+    typeof value === 'boolean' ? value : fallback
+
+const resolvedSparql = {
+    query: runtimeConfig?.sparql?.queryEndpoint ?? DEFAULT_SPARQL_QUERY_ENDPOINT,
+    update:
+        runtimeConfig?.sparql?.updateEndpoint ??
+        runtimeConfig?.sparql?.queryEndpoint ??
+        DEFAULT_SPARQL_UPDATE_ENDPOINT
+}
+
+const persistence = {
+    useLocalStorage: resolveBoolean(runtimeConfig?.persistence?.localStorage, true),
+    useSparql: resolveBoolean(runtimeConfig?.persistence?.sparql, true)
+}
+
+const credentials = {
+    username: runtimeConfig?.sparql?.credentials?.username ?? null,
+    password: runtimeConfig?.sparql?.credentials?.password ?? null
+}
+
 /**
  * Application configuration settings
  */
 export const Config = {
-    // SPARQL endpoint for data persistence
-    // SPARQL_ENDPOINT: 'http://localhost:3030/trestle',
-    SPARQL_ENDPOINT: 'https://fuseki.hyperdata.it/farelo',
+    // SPARQL endpoint definitions
+    SPARQL_ENDPOINTS: resolvedSparql,
+    // Backwards-compatibility with legacy single endpoint usage
+    SPARQL_ENDPOINT: resolvedSparql.query,
+    SPARQL_CREDENTIALS: credentials,
+
     // Base URI for RDF data
     BASE_URI: 'http://hyperdata.it/trestle/',
-
 
     // RDF prefixes
     PREFIXES: {
@@ -26,7 +54,7 @@ export const Config = {
         },
         {
             uri: 'http://purl.org/stuff/project/Task',
-            label: 'Task', 
+            label: 'Task',
             prefix: 'prj:Task',
             description: 'A specific task or action item'
         },
@@ -37,6 +65,9 @@ export const Config = {
             description: 'Default generic node type'
         }
     ],
+
+    // Persistence configuration
+    PERSISTENCE: persistence,
 
     // Application settings
     AUTO_SAVE: false,
@@ -52,4 +83,4 @@ export const Config = {
     }
 }
 
-export default Config;
+export default Config

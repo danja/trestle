@@ -1,0 +1,14 @@
+{
+  "sparql": {
+    "queryEndpoint": "http://localhost:3030/trestle/query",
+    "updateEndpoint": "http://localhost:3030/trestle/update",
+    "credentials": {
+      "username": "admin",
+      "password": "admin123"
+    }
+  },
+  "persistence": {
+    "localStorage": true,
+    "sparql": true
+  }
+}

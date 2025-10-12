@@ -92,13 +92,32 @@ export class TrestleController {
      */
     async saveData() {
         try {
-            const success = await this.model.saveData()
-            if (success) {
-                this.showNotification('Data saved successfully')
-            } else {
-                this.showNotification('Failed to save data', 'error')
+            const result = await this.model.saveData()
+            const localStatus = result?.local ?? null
+            const sparqlStatus = result?.sparql ?? null
+            const localSuccess = localStatus === true
+            const sparqlSuccess = sparqlStatus === true
+            const sparqlAttempted = sparqlStatus !== null
+
+            let message = 'Failed to save data'
+            let notificationType = 'error'
+
+            if (sparqlSuccess && localSuccess) {
+                message = 'Data saved to SPARQL store and browser storage'
+                notificationType = 'info'
+            } else if (sparqlSuccess) {
+                message = 'Data saved to SPARQL store'
+                notificationType = 'info'
+            } else if (localSuccess) {
+                message = sparqlAttempted
+                    ? 'SPARQL save failed - data stored locally instead'
+                    : 'Data saved locally (offline mode)'
+                notificationType = sparqlAttempted ? 'error' : 'info'
             }
-            return success
+
+            this.showNotification(message, notificationType)
+
+            return sparqlSuccess || localSuccess
         } catch (error) {
             console.error('Save error:', error)
             this.showNotification('Error saving data', 'error')

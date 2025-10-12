@@ -5,16 +5,28 @@ import { generateID, generateDate } from '../utils/utils.js'
 export class TrestleModel {
     /**
      * Creates a new TrestleModel instance
-     * @param {string} endpoint - The SPARQL endpoint URL
+     * @param {string|Object} endpoints - The SPARQL endpoint definitions
      * @param {string} baseUri - The base URI for the model
      * @param {EventBus} eventBus - The event bus for communication
      */
-    constructor(endpoint, baseUri, eventBus) {
-        this.endpoint = endpoint
-        this.baseUri = baseUri
+    constructor(endpoints, baseUri, eventBus) {
+        const normalizedEndpoints = typeof endpoints === 'string'
+            ? { query: endpoints, update: endpoints }
+            : (endpoints || {})
+
+        this.queryEndpoint = normalizedEndpoints.query || null
+        this.updateEndpoint = normalizedEndpoints.update || normalizedEndpoints.query || null
+        this.baseUri = baseUri.endsWith('/') ? baseUri : `${baseUri}/`
+        this.baseUriFilter = this.baseUri.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
         this.eventBus = eventBus
         this.rootId = null
         this.nodes = new Map()
+        this.localStorageKey = 'trestle-outline'
+        this.persistence = {
+            useLocalStorage: Config.PERSISTENCE?.useLocalStorage !== false,
+            useSparql: Config.PERSISTENCE?.useSparql !== false
+        }
+        this.sparqlCredentials = Config.SPARQL_CREDENTIALS
 
         // Set up event handlers
         this.eventBus.on('node:updated', this.handleNodeUpdate.bind(this))
@@ -80,13 +92,18 @@ export class TrestleModel {
      * @returns {Promise<boolean>} Success indicator
      */
     async loadData() {
+        if (!this.persistence.useSparql || !this.queryEndpoint) {
+            throw new Error('SPARQL query endpoint is not configured or disabled')
+        }
+
         try {
-            const fURL = `${this.endpoint}?query=${encodeURIComponent(this.buildLoadQuery())}`
+            const fURL = `${this.queryEndpoint}?query=${encodeURIComponent(this.buildLoadQuery())}`
 
             const response = await fetch(fURL, {
                 method: 'GET',
                 headers: {
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    ...this.buildAuthHeaders()
                 }
             })
 
@@ -493,26 +510,110 @@ export class TrestleModel {
      * @returns {Promise<boolean>} Success indicator
      */
     async saveData() {
-        try {
-            const turtle = this.toTurtle()
+        const result = {
+            local: null,
+            sparql: null
+        }
 
-            const response = await fetch(this.endpoint, {
-                method: 'PUT',
+        const turtle = this.toTurtle()
+
+        const localStatus = this.saveOutlineToLocalStorage(turtle)
+        if (localStatus !== null) {
+            result.local = localStatus
+        }
+
+        const shouldSaveToSparql = this.persistence.useSparql && !!this.updateEndpoint
+
+        if (!shouldSaveToSparql) {
+            return result
+        }
+
+        try {
+            const updateQuery = this.buildSparqlUpdate(turtle)
+
+            const response = await fetch(this.updateEndpoint, {
+                method: 'POST',
                 headers: {
-                    'Content-Type': 'text/turtle'
+                    'Content-Type': 'application/sparql-update',
+                    ...this.buildAuthHeaders()
                 },
-                body: turtle
+                body: updateQuery
             })
 
             if (!response.ok) {
-                throw new Error(`Failed to save data: ${response.statusText}`)
+                throw new Error(`Failed to save data: ${response.status} ${response.statusText}`)
             }
 
-            return true
+            result.sparql = true
         } catch (error) {
             console.error('Error saving data:', error)
-            this.eventBus.emit('model:error', { message: 'Failed to save data', error })
-            return false
+            this.eventBus.emit('model:error', {
+                message: 'Failed to persist data to SPARQL endpoint',
+                error
+            })
+            result.sparql = false
+        }
+
+        return result
+    }
+
+    /**
+     * Build a SPARQL update query that replaces the graph for the current base URI
+     * @param {string} turtle - The Turtle serialization of the graph
+     * @returns {string} The SPARQL UPDATE command
+     */
+    buildSparqlUpdate(turtle) {
+        const prefixLines = Object.entries(Config.PREFIXES)
+            .map(([prefix, uri]) => `PREFIX ${prefix}: <${uri}>`)
+            .join('\n')
+
+        const tripleLines = turtle
+            .split('\n')
+            .filter(line => {
+                const trimmed = line.trim()
+                return trimmed.length > 0 && !trimmed.toLowerCase().startsWith('@prefix')
+            })
+
+        const indentedTriples = tripleLines
+            .map(line => `  ${line}`)
+            .join('\n')
+
+        return `${prefixLines}
+
+DELETE WHERE {
+  ?s ?p ?o .
+  FILTER(
+    STRSTARTS(STR(?s), "${this.baseUriFilter}") ||
+    STRSTARTS(STR(?o), "${this.baseUriFilter}")
+  )
+};
+
+INSERT DATA {
+${indentedTriples}
+};
+`
+    }
+
+    buildAuthHeaders() {
+        const username = this.sparqlCredentials?.username
+        const password = this.sparqlCredentials?.password
+
+        if (!username || password === undefined || password === null) {
+            return {}
+        }
+
+        let encoded
+
+        if (typeof btoa === 'function') {
+            encoded = btoa(`${username}:${password}`)
+        } else if (typeof Buffer !== 'undefined') {
+            encoded = Buffer.from(`${username}:${password}`, 'utf-8').toString('base64')
+        } else {
+            return {}
+        }
+
+        return {
+            Authorization: `Basic ${encoded}`
         }
     }
 
@@ -544,14 +645,72 @@ export class TrestleModel {
     }
 
     /**
+     * Persist the current outline to localStorage
+     * @param {string} turtle - The Turtle representation of the graph
+     * @returns {boolean|null} True if saved, false if failed, null if skipped
+     */
+    saveOutlineToLocalStorage(turtle) {
+        if (!this.persistence.useLocalStorage) {
+            return null
+        }
+
+        try {
+            const nodesSnapshot = Array.from(this.nodes.values()).map(node => {
+                const snapshot = { ...node }
+                if (Array.isArray(node.children)) {
+                    snapshot.children = [...node.children]
+                }
+                if (Array.isArray(node.tags)) {
+                    snapshot.tags = [...node.tags]
+                }
+                return snapshot
+            })
+
+            const payload = {
+                savedAt: new Date().toISOString(),
+                nodes: nodesSnapshot,
+                turtle
+            }
+
+            localStorage.setItem(this.localStorageKey, JSON.stringify(payload))
+            return true
+        } catch (error) {
+            console.error('Failed to save outline locally:', error)
+            this.eventBus.emit('model:error', {
+                message: 'Failed to persist outline locally',
+                error
+            })
+            return false
+        }
+    }
+
+    /**
      * Load the outline from localStorage
      * @returns {Object|null} The loaded outline or null if not found
      */
     loadOutline() {
+        if (!this.persistence.useLocalStorage) {
+            return null
+        }
+
         try {
-            const savedData = localStorage.getItem('trestle-outline')
+            const savedData = localStorage.getItem(this.localStorageKey)
             if (savedData) {
-                return JSON.parse(savedData)
+                const parsed = JSON.parse(savedData)
+
+                if (Array.isArray(parsed)) {
+                    return { nodes: parsed }
+                }
+
+                if (parsed && Array.isArray(parsed.nodes)) {
+                    return {
+                        nodes: parsed.nodes,
+                        turtle: parsed.turtle,
+                        savedAt: parsed.savedAt
+                    }
+                }
+
+                return parsed
             }
         } catch (error) {
             console.error('Failed to load outline:', error)
